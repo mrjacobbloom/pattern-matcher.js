@@ -1,3 +1,8 @@
+/**
+ * This is the data structure that actually tracks what got called and what
+ * got passed to it. Without something like this, JavaScript would finish
+ * executing each argument before passing anything to the surrounding call.
+ */
 class TermInstance {
   constructor(_class, args) {
     this._class = _class;
@@ -14,25 +19,46 @@ class TermInstance {
   }
 }
 
+/**
+ * Term here is our generic word for a terminal or nonterminal. They can
+ * arbitrarily extend each-other using a.extends(b) and you can declare them
+ * abstract (i.e. not directly constructible, only subclassable) using
+ * a.setAbstract()
+ * 
+ * There's a whole lot of trickiness going on here, specifically a couple things:
+ * - This exploits a thing in JS where constructors can return an object besides
+ *   the thing being constructed and that's what gets returned when you try
+ *   to use the constructor.
+ * - The thing we return is a Proxy. Javascript's Proxies let you pass an object
+ *   off as something it's not, and you can catch everything that happens to the
+ *   object and execute your own code instead of whatever JavaScript would
+ *   usually do.
+ * In this case, we create a Proxy around a function called this._apply so it
+ * can be called like a function but otherwise behaves like our Term object.
+ * We do this because class constructors can't natively create objects that can
+ * be called like functions.
+ */
 export class Term {
   constructor(type, argTypes = []) {
     this.type = type;
     this.self = this; // because Proxy is complicated
     this.argTypes = argTypes;
     this.isAbstract = false;
-    let handler = {
-      get: (target, prop, receiver) => {
-        return this[prop];
-      },
-      apply: (target, thisArg, args) => {
+    this._apply = {
+      [type]: (...args) => {
         if(this.isAbstract) {
           throw new TypeError(`Abstract term ${this.type} not directly constructable`);
         }
         this.checkArgTypes(args);
         return new TermInstance(this, args);
       }
+    }[type]; // a trick to change the function name in stack traces
+    let handler = {
+      get: (target, prop, receiver) => {
+        return this[prop];
+      }
     };
-    this.proxy = new Proxy(() => {}, handler);
+    this.proxy = new Proxy(this._apply, handler);
     this.ancestors = [this.proxy];
     return this.proxy;
   }
@@ -60,6 +86,11 @@ export class Term {
   }
 }
 
+/**
+ * This is the pattern-matching part. It accepts a Map or an array of
+ * [term, callback] arrays and returns a function that behaves like a glorified
+ * switch statement.
+ */
 export class PatternMatcher {
   constructor(callbacks) {
     let cbMap = new Map(callbacks);
