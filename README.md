@@ -10,6 +10,15 @@ syntax.
 Note: 80% of the hacking could probably be removed if I wasn't so attached to
 the `new` keyword. But I like `new` so
 
+## The files
+
+- `pattern-matcher.mjs` is the library or whatever. It exports 2 classes, `Term`
+  and `PatternMatcher`.
+- `driver.mjs` is an inductive implementation of the natural numbers.
+- `pattern-matcher2.mjs` and `driver2.mjs` are my stab at using the native
+  `class foo extends bar {}` syntax, but I didn't get that far since class
+  constructors are never callable.
+
 ## Run it
 
 This uses ES module syntax, so it should work fine in browsers but you'll have
