@@ -7,6 +7,9 @@ I might update this as we learn, maybe. The code's not that pretty right now
 and it uses all kinds of Proxies and fakeout constructors to hack JavaScript
 syntax.
 
+Note: 80% of the hacking could probably be removed if I wasn't so attached to
+the `new` keyword. But I like `new` so
+
 ## Run it
 
 This uses ES module syntax, so it should work fine in browsers but you'll have
