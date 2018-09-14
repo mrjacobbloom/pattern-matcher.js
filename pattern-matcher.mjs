@@ -95,7 +95,7 @@ export class PatternMatcher {
   constructor(callbacks) {
     let cbMap = new Map(callbacks);
     return term => { // my new favorite anti-pattern: fakeout constructors
-      if(term instanceof Term) term = new TermInstance(term, []); // if it takes no args, you can leave out the parens! Also makes for a stupid line of code :P
+      if(!(term instanceof TermInstance)) term = term._apply(); // if it takes no args, you can leave out the parens! Also makes for a stupid line of code :P
       for(let type of term.ancestors) {
         if(cbMap.has(type)) return cbMap.get(type)(term.args);
       }
