@@ -40,27 +40,27 @@ class TermInstance {
  */
 export class Term {
   constructor(type, argTypes = []) {
-    this.type = type;
+    this.type = type; // string representation, used in errors
     this.self = this; // because Proxy is complicated
     this.argTypes = argTypes;
     this.isAbstract = false;
-    this._apply = {
-      [type]: (...args) => {
-        if(this.isAbstract) {
-          throw new TypeError(`Abstract term ${this.type} not directly constructable`);
-        }
-        this.checkArgTypes(args);
-        return new TermInstance(this, args);
-      }
-    }[type]; // a trick to change the function name in stack traces
-    let handler = {
-      get: (target, prop, receiver) => {
-        return this[prop];
-      }
-    };
-    this.proxy = new Proxy(this._apply, handler);
+    this._genProxy();
     this.ancestors = [this.proxy];
-    return this.proxy;
+    return this.proxy; // if constructor returns an object that's what gets returned
+  }
+  _apply(...args) {
+    if(this.isAbstract) {
+      throw new TypeError(`Abstract term ${this.type} not directly constructable`);
+    }
+    this.checkArgTypes(args);
+    return new TermInstance(this, args);
+  }
+  _genProxy() {
+    let handler = {
+      get: (target, prop, receiver) => this[prop],
+      construct: (...args) => new this(...args)
+    };
+    this.proxy = new Proxy(this._apply.bind(this), handler);
   }
   setArgTypes(argTypes) { // since otherwise you can't do recursion or whatever without a supertype
     this.self.argTypes = argTypes;
