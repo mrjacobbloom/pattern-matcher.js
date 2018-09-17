@@ -7,6 +7,8 @@ natural_numbers: {
   //Succ.setArgTypes([Succ]);
 
   let getValue = new PatternMatcher([
+    // this evolved to be backwards where new is used to generate a Pattern
+    // but not to actually construct the thing... I should probably flip that?
     [new Z, () => {
       return 0;
     }],
