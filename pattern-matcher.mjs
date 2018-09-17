@@ -70,14 +70,30 @@ export class Term {
     };
     this._proxy = new Proxy(this._apply.bind(this), handler);
   }
-  setArgTypes(argTypes) { // since otherwise you can't do recursion or whatever without a supertype
+  /**
+   * Set the arg types after the fact. This allows for things like
+   * recursion without a supertype, though that might be a bad idea?
+   * @param {Array.<Term|any>} argTypes Array of types to expect
+   */
+  setArgTypes(argTypes) {
     this._self.argTypes = argTypes;
     return this._proxy; // for chainability
   }
-  extends(parent) { // is this a reserved word? Whoopsie
+  /**
+   * Declare this Term a subtype of another Term.
+   * Is this a reserved word? Whoopsie
+   * @param {Term} parent 
+   */
+  extends(parent) {
     this._ancestors.push(...parent._ancestors);
     return this._proxy; // for chainability
   }
+  /**
+   * Set a Term abstract, meaning it can be subclassed but never directly
+   * constructed.
+   * @param {boolean=true} isAbstract Uh in case you change your mind you can
+   * theoretically pass false to explicitly set abstract to false.
+   */
   setAbstract(isAbstract = true) {
     this._self._isAbstract = isAbstract;
     return this._proxy; // for chainability
@@ -87,6 +103,10 @@ export class Term {
   }
 }
 
+/**
+ * Should I just have overloaded TermInstance? eh
+ * @private
+ */
 class Pattern {
   constructor(term) {
     if(term instanceof Pattern) return term;
@@ -94,6 +114,11 @@ class Pattern {
     this._type = (term._class && term._class._proxy) || term;
     this._args = term.args ? term.args.map(arg => new Pattern(arg)) : [];
   }
+  /**
+   * Tests whether a term matches the given pattern.
+   * @param {TermInstance} term
+   * @returns {boolean}
+   */
   matches(term) {
     //if(top) console.log('matching against pattern', this.toString());
     if(term._proxy) {
@@ -110,6 +135,15 @@ class Pattern {
       return type == this._type;
     }
   }
+
+  /**
+   * This extracts arguments so they're nicely destructurable in case functions.
+   * Anything in the pattern that has arguments is turned into an array.
+   * For example, if the pattern was `Foo(Bar, Baz(Foo, Bar)`, given a term
+   * matching that shape this would extract `[bar, [foo, bar]]`
+   * @param {TermInstance} term A TermInstance whose shape matches the pattern.
+   * @returns {Array.<any>}
+   */
   formatArgs(term) {
     let formatted = [];
     for(let i = 0; i < this._args.length; i++) {
@@ -131,7 +165,8 @@ class Pattern {
 }
 
 /**
- * This is the pattern-matching part.
+ * This is the pattern-matching part. Not a real constructor, I just like `new`
+ * over names like `genPatternMatcher` *shrug*
  * @param {Array.<[TermInstance, Function]>} termMap
  * @returns {Function} a glorified switch statement.
  */
@@ -154,6 +189,13 @@ export class PatternMatcher {
   }
 }
 
+/**
+ * Validates whether the types match what's given in the term definitions.
+ * Doesn't return anything, rather it throws if anything's wrong. Wrap it in a
+ * try/catch if that's an issue for you
+ * @param {TermInstance} term
+ * @throws {TypeError}
+ */
 export function validateTypes(term) {
   if(term._proxy) {
     term = term._apply(); // if it takes no args, you can leave out the parens
