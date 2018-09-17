@@ -14,10 +14,7 @@ the `new` keyword. But I like `new` so
 
 - `pattern-matcher.mjs` is the library or whatever. It exports 2 classes, `Term`
   and `PatternMatcher`.
-- `driver.mjs` is an inductive implementation of the natural numbers.
-- `pattern-matcher2.mjs` and `driver2.mjs` are my stab at using the native
-  `class foo extends bar {}` syntax, but I didn't get that far since class
-  constructors are never callable.
+- `driver.mjs` is an inductive implementation of the natural numbers and lists
 
 ## Run it
 
