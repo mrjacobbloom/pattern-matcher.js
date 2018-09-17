@@ -1,4 +1,4 @@
-import {Term, PatternMatcher} from './pattern-matcher.mjs';
+import {Term, PatternMatcher, validateTypes} from './pattern-matcher.mjs';
 
 natural_numbers: {
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
@@ -9,19 +9,19 @@ natural_numbers: {
   let getValue = new PatternMatcher([
     // this evolved to be backwards where new is used to generate a Pattern
     // but not to actually construct the thing... I should probably flip that?
-    [new Z, () => {
+    [Z, () => {
       return 0;
     }],
-    [new Succ(NatNum), natnum => {
+    [Succ(NatNum), (natnum) => {
       return getValue(natnum) + 1;
     }],
   ]);
 
   let isEven = new PatternMatcher([
-    [new Z, () => {
+    [Z, () => {
       return true;
     }],
-    [new Succ(NatNum), (natnum) => {
+    [Succ(NatNum), (natnum) => {
       return !isEven(natnum);
     }],
   ]);
@@ -30,7 +30,7 @@ natural_numbers: {
   console.log('getValue', four.toString(), getValue(four));
   console.log('isEven', four.toString(), isEven(four));
   try {
-    Succ(NatNum());
+    validateTypes(Succ(NatNum()));
   } catch(e) {
     console.log(e.message);
   }
@@ -43,24 +43,33 @@ inductive_list: {
   let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
 
   let toJSArray = new PatternMatcher([
-    [new Cons(Number, Nil), (number, nil) => { // ew
+    [Cons(Number, Nil), (number, nil) => { // ew
       return [number];
     }],
-    [new Cons(Number, Cons), (number, cons) => {
+    [Cons(Number, Cons), (number, cons) => {
       return [number].concat(toJSArray(cons));
     }]
   ]);
 
-  /*let isZigZag = new PatternMatcher([
-    [new Cons(Number, Nil), (number, nil) => { // ew
-      return [number];
+  let isZigZag = new PatternMatcher([
+    [Nil, () => { // ew
+      return true
     }],
-    [new Cons(Number, Cons), (number, cons) => {
-      return [number].concat(toJSArray(cons));
-    }]
-  ]);*/
+    [Cons(Number, Nil), (a, nil) => {
+      return true;
+    }],
+    [Cons(Number, Cons(Number, Nil)), (a, [b, nil]) => {
+      return a != b;
+    }],
+    [Cons(Number, Cons(Number, Cons(Number, NumList))), (a, [b, [c, rest]]) => {
+      return ((a > b && b < c) || (a < b && b > c))
+        && isZigZag(Cons(b, Cons(c, rest)));
+    }],
+  ]);
 
   let myList = Cons(1, Cons(2, Cons(2, Cons(4, Nil))));
   console.log('toJSArray', myList.toString(), JSON.stringify(toJSArray(myList)));
-  //let zigZaggyList = Cons(-1, Cons(1, Cons(-1, Cons(1, Nil))));
+  let zzList = Cons(-1, Cons(1, Cons(-1, Cons(1, Nil))));
+  console.log('isZigZag', myList.toString(), isZigZag(myList));
+  console.log('isZigZag', zzList.toString(), isZigZag(zzList));
 }

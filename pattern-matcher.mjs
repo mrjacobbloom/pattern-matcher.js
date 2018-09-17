@@ -12,7 +12,19 @@ class TermInstance {
   }
   toString() {
     if(this.args.length) {
-      return `${this._type}(${this.args.map(a => a.toString()).join(', ')})`;
+      let argStrings = this.args.map(arg => {
+        let cls = Object(arg);
+        if(cls._type) {
+          return arg.toString();
+        } else {
+          if(typeof cls == 'function') {
+            return cls.name;
+          } else {
+            return arg;
+          }
+        }
+      });
+      return `${this._type}(${argStrings.join(', ')})`;
     } else {
       return this._type;
     }
@@ -50,34 +62,13 @@ export class Term {
   }
   _genProxy() {
     this._apply = function(...args) {
-      if(this._isAbstract) {
-        throw new TypeError(`Abstract term ${this._type} not directly constructable`);
-      }
-      this._checkArgTypes(args);
       return new TermInstance(this, args);
     }
-    this._construct = (function(target, args) {
-      return new Pattern(this, args);
-    }).bind(this);
     let handler = {
       get: (target, prop, receiver) => this[prop],
-      construct: this._construct
+      construct: ((target, args) => this._apply(...args)).bind(this)
     };
     this._proxy = new Proxy(this._apply.bind(this), handler);
-  }
-  _checkArgTypes(args) {
-    for(let i = 0; i < args.length; i++) {
-      let arg = args[i];
-      let expectedType = this.argTypes[i];
-      if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
-        if(!arg._ancestors.includes(expectedType._ancestors[0])) throw new TypeError(`Argument ${i} of ${this._type} must be of type ${expectedType._type} (found ${arg._ancestors.toString()})`);
-      } else {
-        let actualType = Object(arg).constructor;
-        if(actualType != expectedType) {
-          throw new TypeError(`Argument ${i} of ${this._type} must be of type ${expectedType._type || expectedType.name} (found ${actualType.name})`);
-        }
-      }
-    }
   }
   setArgTypes(argTypes) { // since otherwise you can't do recursion or whatever without a supertype
     this._self.argTypes = argTypes;
@@ -97,17 +88,18 @@ export class Term {
 }
 
 class Pattern {
-  constructor(type, args = []) {
-    if(type instanceof Pattern) return type;
-    this._type = type._proxy || type;
-    this._args = args.map(arg => new Pattern(arg));
+  constructor(term) {
+    if(term instanceof Pattern) return term;
+    this._term = term;
+    this._type = (term._class && term._class._proxy) || term;
+    this._args = term.args ? term.args.map(arg => new Pattern(arg)) : [];
   }
   matches(term) {
+    //if(top) console.log('matching against pattern', this.toString());
     if(term._proxy) {
       term = term._apply(); // if it takes no args, you can leave out the parens
     }
     if(term instanceof TermInstance) {
-      //console.log('comparing this._type', this._type, 'to term chain', term._ancestors.toString())
       if (!term._ancestors.includes(this._type)) return false;
       for(let i = 0; i < this._args.length; i++) {
         if(!this._args[i].matches(term.args[i])) return false;
@@ -118,23 +110,68 @@ class Pattern {
       return type == this._type;
     }
   }
+  formatArgs(term) {
+    let formatted = [];
+    for(let i = 0; i < this._args.length; i++) {
+      let formatted_arg = this._args[i].formatArgs(term.args[i]);
+      if(formatted_arg.length) {
+        formatted[i] = formatted_arg;
+      } else {
+        formatted[i] = term.args[i];
+      }
+    }
+    return formatted;
+  }
   // static or(...types) {}
   // static rest(type) {}
   // static get Any() {return some symbol or something}
+  toString() {
+    return this._term.toString();
+  }
 }
 
 /**
  * This is the pattern-matching part.
- * @param {Array.<[Pattern, Function]>} patternMap
+ * @param {Array.<[TermInstance, Function]>} termMap
  * @returns {Function} a glorified switch statement.
  */
 export class PatternMatcher {
-  constructor(patternMap) {
+  constructor(termMap) {
+    let patternMap = termMap.map(([term, cb]) => {
+      return [new Pattern(term), cb];
+    })
     return term => { // my new favorite anti-pattern: fakeout constructors
+      validateTypes(term);
       for(let [pattern, callback] of patternMap) {
-        if(pattern.matches(term)) return callback(...(term.args || []));
+        if(pattern.matches(term)) {
+          let args = pattern.formatArgs(term);
+          //console.log('matched pattern', pattern.toString());
+          return callback(...args);
+        }
       }
-      throw new TypeError(`No case matched ancestor chain [${term._ancestors.toString()}]`);
+      throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${term._ancestors.toString()}])`);
+    }
+  }
+}
+
+export function validateTypes(term) {
+  if(term._proxy) {
+    term = term._apply(); // if it takes no args, you can leave out the parens
+  }
+  if(term._class._isAbstract) {
+    throw new TypeError(`Abstract term ${term._type} not directly constructable`);
+  }
+  for(let i = 0; i < term.args.length; i++) {
+    let arg = term.args[i];
+    let expectedType = term._class.argTypes[i];
+    if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
+      if(!arg._ancestors.includes(expectedType._ancestors[0])) throw new TypeError(`Argument ${i} of ${term._type} must be of type ${expectedType._type} (found ${arg._ancestors.toString()})`);
+      validateTypes(arg);
+    } else {
+      let actualType = Object(arg).constructor;
+      if(actualType != expectedType) {
+        throw new TypeError(`Argument ${i} of ${term._type} must be of type ${expectedType._type || expectedType.name} (found ${actualType.name})`);
+      }
     }
   }
 }
