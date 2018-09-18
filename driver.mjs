@@ -1,6 +1,6 @@
-import {Term, PatternMatcher, validateTypes} from './pattern-matcher.mjs';
+import {Term, PatternMatcher, Types} from './pattern-matcher.mjs';
 
-natural_numbers: {
+natural_numbers: {//break natural_numbers;
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
   let Z = new Term('Z').extends(NatNum);
   let Succ = new Term('Succ', [NatNum]).extends(NatNum);
@@ -28,15 +28,14 @@ natural_numbers: {
   console.log('getValue', four.toString(), getValue(four));
   console.log('isEven', four.toString(), isEven(four));
   try {
-    validateTypes(Succ(NatNum()));
+    Types.validate(Succ(NatNum()));
   } catch(e) {
     console.log(e.message);
   }
 }
 
-inductive_list: {
+inductive_list: {//break inductive_list;
   let NumList = new Term('NumList').setAbstract();
-  //List.setArgTypes([Number, ArgTypeList.or(List, Null)]);
   let Nil = new Term('Nil').extends(NumList);
   let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
 
@@ -70,4 +69,15 @@ inductive_list: {
   let zzList = Cons(-1, Cons(1, Cons(-1, Cons(1, Nil))));
   console.log('isZigZag', myList.toString(), isZigZag(myList));
   console.log('isZigZag', zzList.toString(), isZigZag(zzList));
+}
+
+veriadic_list: {
+  let List = new Term('List', [Types.rest(Types.any)]);
+  let myList = List(1, 2, 'hello', List);
+  Types.validate(myList);
+  let toJSArray2 = new PatternMatcher([
+    [List(Types.rest(Types.any)), (...items) => items],
+    [Types.any, a => a], // default case
+  ]);
+  console.log('toJSArray2', myList.toString(), toJSArray2(myList))
 }
