@@ -85,14 +85,18 @@ let evalCondExpr = new PatternMatcher([
     }
   }],
   [And(CondExpr, CondExpr), (c1, c2) => {
-    if(evalCondExpr(c1) == ConstTrue && evalCondExpr(c2) == ConstTrue) {
+    let ec1 = evalCondExpr(c1);
+    let ec2 = evalCondExpr(c2);
+    if(ec1 == ConstTrue && ec2 == ConstTrue) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
   [Or(CondExpr, CondExpr), (c1, c2) => {
-    if(evalCondExpr(c1) == ConstTrue || evalCondExpr(c2) == ConstTrue) {
+    let ec1 = evalCondExpr(c1);
+    let ec2 = evalCondExpr(c2);
+    if(ec1 == ConstTrue || ec2 == ConstTrue) {
       return ConstTrue;
     } else {
       return ConstFalse;
