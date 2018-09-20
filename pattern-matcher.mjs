@@ -1,3 +1,5 @@
+let matchAnyArgs = Symbol('matchAnyArgs');
+
 /**
  * This is the data structure that actually tracks what got called and what
  * got passed to it. Without something like this, JavaScript would finish
@@ -11,7 +13,7 @@ class TermInstance {
     this.args = args;
   }
   toString() {
-    if(this.args.length) {
+    if(this.args[0] != matchAnyArgs && this.args.length) {
       let argStrings = this.args.map(arg => {
         let cls = Object(arg);
         if(cls._type) {
@@ -111,8 +113,19 @@ class Pattern {
   constructor(term) {
     if(term instanceof Pattern) return term;
     this.term = term;
-    this.type = (term._class && term._class._proxy) || term;
-    this.args = term.args ? term.args.map(arg => new Pattern(arg)) : [];
+    if(term._class) {
+      this.type = term._class._proxy;
+      if(term.args[0] == matchAnyArgs) {
+        // if brackets were left off, accept whatever arguments
+        this.args = matchAnyArgs;
+      } else {
+        // if brackets were intentionally on and empty, don't match terms with arguments
+        this.args = term.args ? term.args.map(arg => new Pattern(arg)) : [];
+      }
+    } else {
+      this.type = term;
+      this.args = matchAnyArgs;
+    }
   }
   /**
    * Tests whether a term matches the given pattern.
@@ -127,17 +140,18 @@ class Pattern {
     }
     if(term instanceof TermInstance) {
       if (!term._ancestors.includes(this.type)) return false;
-      for(let argIdx = 0, argPatternIdx = 0; argPatternIdx < this.args.length; argIdx++, argPatternIdx++) {
-        let argPattern = this.args[argPatternIdx];
-        if(argPattern.term instanceof Types.Rest) {
-          let restPattern = argPattern.term.pattern;
-          while(argIdx < term.args.length) {
-            if(!restPattern.matches(term.args[argIdx])) return false;
-            argIdx++;
+      // if brackets were left off, accept whatever arguments
+      // if brackets were intentionally on and empty, don't match terms with arguments
+      if(this.args == matchAnyArgs) return true;
+      for(let i = 0; i < this.args.length; i++) {
+        let argPattern = this.args[i];
+        if(argPattern.term instanceof Types.List) {
+          let listPattern = argPattern.term.pattern;
+          for(let listitem of term.args[i]) {
+            if(!listPattern.matches(listitem)) return false;
           }
-          return true
         } else {
-          if(!argPattern.matches(term.args[argIdx])) return false;
+          if(!argPattern.matches(term.args[i])) return false;
         }
       }
       return true;
@@ -158,17 +172,13 @@ class Pattern {
   formatArgs(term) {
     let formatted = [];
     if(!term.args || !this.args.length) return formatted;
-    for(let termArgIdx = 0, argTypeIdx = 0; termArgIdx < term.args.length; termArgIdx++, argTypeIdx++) {
-      let argType = this.args[argTypeIdx];
-      if(argType.term instanceof Types.Rest) {
-        argTypeIdx--;
-        argType = argType.term.pattern;
-      }
-      let formatted_arg = argType.formatArgs(term.args[termArgIdx]);
+    for(let i = 0; i < term.args.length; i++) {
+      let argType = this.args[i];
+      let formatted_arg = argType.formatArgs(term.args[i]);
       if(formatted_arg.length) {
         formatted.push(formatted_arg);
       } else {
-        formatted.push(term.args[termArgIdx])
+        formatted.push(term.args[i])
       }
     }
     return formatted;
@@ -203,6 +213,15 @@ export class PatternMatcher {
   }
 }
 
+let argMatches = (arg, expectedType) => {
+  if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
+    return arg._ancestors.includes(expectedType._ancestors[0]);
+  } else {
+    let actualType = Object(arg).constructor;
+    return (actualType == expectedType);
+  }
+};
+
 export let Types = {
   /**
    * Indicates that any type may be passed
@@ -211,12 +230,12 @@ export let Types = {
   any: Symbol('Types.any'),
 
   Or: class {constructor(...types) {this.types = types;}},
-  Rest: class {constructor(type, min = 0, max = Infinity) {
+  List: class {constructor(type, min = 0, max = Infinity) {
     this.type = type;
     this.min = min;
     this.max = max;
     if(type._proxy) {
-      this.pattern = new Pattern(type([]));
+      this.pattern = new Pattern(type(matchAnyArgs));
     } else {
       this.pattern = new Pattern(type);
     }
@@ -231,14 +250,13 @@ export let Types = {
   or: (...types) => new Types.Or(...types),
 
   /**
-   * Indicates that one of several types are acceptable
-   * (you might wanna use a supertype instead)
+   * Indicates that several arguments of the type may be passed in an array
    * @param {Term|any} type The repeatable type
    * @param {number=0} min The minimum number of repeats
    * @param {number=Infinity} max The maximum number of repeats
-   * @returns {Types.Rest}
+   * @returns {Types.List}
    */
-  rest: (type, min = 0, max = Infinity) => new Types.Rest(type),
+  list: (type, min = 0, max = Infinity) => new Types.List(type, min, max),
 
   /**
  * Validates whether the types match what's given in the term definitions.
@@ -248,32 +266,37 @@ export let Types = {
  * @throws {TypeError}
  */
   validate: (term) => {
+    if(!term._type) return; // native type or something
     if(term._proxy) {
       term = term._apply(); // if it takes no args, you can leave out the parens
     }
     if(term._class._isAbstract) {
       throw new TypeError(`Abstract term ${term._type} not directly constructable`);
     }
-    let argTypeIdx = 0;
-    for(let termArgIdx = 0; termArgIdx < term.args.length; termArgIdx++) {
-      let expectedType = term._class.argTypes[argTypeIdx++];
-      if(expectedType instanceof Types.Rest) {
-        argTypeIdx--;
-        expectedType = expectedType.type;
-        // @todo: min & max
-      }
+    if(term.args.length != term._class.argTypes.length) {
+      throw new RangeError(`${term._type} should take ${term._class.argTypes.length} arguments (found ${term.args.length})`);
+    }
+    for(let i = 0; i < term.args.length; i++) {
+      let expectedType = term._class.argTypes[i];
       if(expectedType == Types.any) continue;
 
-      let arg = term.args[termArgIdx];
-      
-      if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
-        if(!arg._ancestors.includes(expectedType._ancestors[0])) throw new TypeError(`Argument ${termArgIdx} of ${term._type} must be of type ${expectedType._type} (found ${arg._ancestors.toString()})`);
-        Types.validate(arg);
-      } else {
-        let actualType = Object(arg).constructor;
-        if(actualType != expectedType) {
-          throw new TypeError(`Argument ${termArgIdx} of ${term._type} must be of type ${expectedType._type || expectedType.name} (found ${actualType.name})`);
+      let arg = term.args[i];
+
+      if(expectedType instanceof Types.List) {
+        if(!Array.isArray(arg) || arg.length < expectedType.min || arg.length > expectedType.max) {
+          throw new RangeError(`Argument ${i} of ${term._type} must be an array of length ${expectedType.min} - ${expectedType.max} (inclusive)`);
         }
+        for(let listitem of arg) {
+          if(!argMatches(listitem, expectedType.type)) {
+            if(!listitem._ancestors.includes(expectedType.type._ancestors[0])) throw new TypeError(`Argument ${i} of ${term._type} must be an array of ${expectedType._type || expectedType.name}`);
+          }
+          Types.validate(listitem);
+        }
+      } else {
+        if(!argMatches(arg, expectedType)) {
+          throw new TypeError(`Argument ${i} of ${term._type} must be of type ${expectedType._type || expectedType.name}`);
+        }
+        Types.validate(arg);
       }
     }
   }

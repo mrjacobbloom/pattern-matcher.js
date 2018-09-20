@@ -1,6 +1,6 @@
 import {Term, PatternMatcher, Types} from './pattern-matcher.mjs';
 
-natural_numbers: {//break natural_numbers;
+natural_numbers: { //break natural_numbers;
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
   let Z = new Term('Z').extends(NatNum);
   let Succ = new Term('Succ', [NatNum]).extends(NatNum);
@@ -34,7 +34,7 @@ natural_numbers: {//break natural_numbers;
   }
 }
 
-inductive_list: {//break inductive_list;
+inductive_list: { //break inductive_list;
   let NumList = new Term('NumList').setAbstract();
   let Nil = new Term('Nil').extends(NumList);
   let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
@@ -71,13 +71,55 @@ inductive_list: {//break inductive_list;
   console.log('isZigZag', zzList.toString(), isZigZag(zzList));
 }
 
-veriadic_list: {
-  let List = new Term('List', [Types.rest(Types.any)]);
-  let myList = List(1, 2, 'hello', List);
-  Types.validate(myList);
+veriadic_list: { //break veriadic_list;
+  let List = new Term('List', [Types.list(Types.any)]);
   let toJSArray2 = new PatternMatcher([
-    [List(Types.rest(Types.any)), (...items) => items],
+    [List(Types.list(Types.any)), (items) => items],
     [Types.any, a => a], // default case
   ]);
+  let myList = List([1, 2, 'hello', List]);
   console.log('toJSArray2', myList.toString(), toJSArray2(myList))
+}
+
+tree: { //break tree;
+  let NumTree = new Term('NumTree').setAbstract();
+  let Leaf = new Term('Leaf').extends(NumTree);
+  let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
+
+  let depth = new PatternMatcher([
+    [Leaf, () => 0],
+    [Node(Number, NumTree, NumTree), (_, left, right) => {
+      return 1 + Math.max(depth(left), depth(right));
+    }]
+  ]);
+
+  let treeMatches = function(tree, p) {
+    (new PatternMatcher([
+      [Leaf, () => true],
+      [Node(Number, NumTree, NumTree), (num, left, right) => {
+        return p(num) && treeMatches(left, p) && treeMatches(right, p);
+      }]
+    ]))(tree);
+  };
+
+  let isBST = new PatternMatcher([
+    [Leaf, () => true],
+    [Node(Number, NumTree, NumTree), (num, left, right) => {
+      return isBST(left) && isBST(right) &&
+      treeMatches(left, a => a < num) && treeMatches(tight, a => a > num);
+    }]
+  ]);
+
+  let t1 = Leaf;
+  let t2 = Node(10, Leaf, Leaf);
+  let t3 = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)));
+
+  console.log('depth', t1.toString(), depth(t1));
+  console.log('depth', t2.toString(), depth(t2));
+  console.log('depth', t3.toString(), depth(t3));
+
+  console.log('isBST', t1.toString(), isBST(t1));
+  console.log('isBST', t2.toString(), isBST(t2));
+  console.log('isBST', t3.toString(), isBST(t3));
+  console.log('TODO: FIX THIS');
 }
