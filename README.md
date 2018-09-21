@@ -7,7 +7,7 @@ I've been updating it as we learned more kinds and uses of pattern matching. The
 code's getting prettier but it's still not that easy to read and it uses all
 kinds of Proxies and fakeout constructors to hack JavaScript syntax.
 
-Note: 80% of the hacking could probably be removed if I wasn't so attached to
+Note: 10% of the hacking could probably be removed if I wasn't so attached to
 the `new` keyword. But I like `new` so
 
 ## The files
