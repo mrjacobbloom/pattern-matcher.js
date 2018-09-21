@@ -69,6 +69,50 @@ let myList = Cons(1, Cons(2, Cons(2, Cons(4, Nil)))); // [1, 2, 2, 4]
 isZigZag(myList); // false
 ```
 
+It can also take parameters by passing PatternMatcher a function that returns an
+array. Here's a more complicated implementation of a tiny language that stores
+and gets numbers. It passes the variable "env" around, which is a map of
+variable identifiers to values:
+
+```javascript
+let Expression = new Term('Expression').setAbstract();
+let Constant = new Term('Constant', [Number]).extends(Expression);
+let Get = new Term('Get', [String]).extends(Expression);
+let Store = new Term('Store', [String, Expression]).extends(Expression);
+let Print = new Term('Print', [String]).extends(Expression);
+let Program = new Term('Program', [Types.list(Expression)]);
+
+let evalExpr = new PatternMatcher(env => [
+  [Constant(Number), (num) => {
+    return num;
+  }],
+  [Get(String), (identifier) => {
+    return env.get(identifier);
+  }],
+  [Store(String, Expression), (identifier, expr) => {
+    env.set(identifier, evalExpr(expr, env));
+  }],
+  [Print(String), (identifier) => {
+    console.log(env.get(identifier));
+  }],
+  
+]);
+
+function evalProgram(program) {
+  let env = new Map();
+  let [expressions] = program.args;
+  expressions.forEach(expr => evalExpr(expr, env));
+}
+
+let myProgram = Program([
+  Store('x', Constant(1)),
+  Store('y', Get('x')),
+  Print('y'),
+]);
+
+evalProgram(myProgram);
+```
+
 ### `Types`
 
 `Types` is an object containing a few things:
@@ -81,7 +125,7 @@ isZigZag(myList); // false
 - `Types.list(type, min=0, max=Infinity)` - Put
   this in any list of argument types, it means expect an array of that type
   of size min-max (inclusive)
-- `Types.or(type1, type2...)` (not implemented yet)
+- `Types.or(type1, type2...)` (not implemented yet, use a supertype instead)
 
 
 ## Run it

@@ -190,27 +190,88 @@ class Pattern {
   }
 }
 
+let unwrapped = Symbol('unwrapped');
+
 /**
  * This is the pattern-matching part. Not a real constructor, I just like `new`
  * over names like `genPatternMatcher` *shrug*
- * @param {Array.<[TermInstance, Function]>} termMap
+ * If you pass it a function, the arguments of that function will be available
+ * to the case callbacks. Note that the arguments are proxies. They'll work
+ * fine for predicates or environment var maps, but if you want to pass, say, a
+ * number, you'll have to wrap it in an object of some kind.
+ * @param {Array.<[TermInstance, Function]> | () => Array.<[TermInstance, Function]>} termMap
  * @returns {Function} a glorified switch statement.
  */
 export class PatternMatcher {
   constructor(termMap) {
-    let patternMap = termMap.map(([term, cb]) => {
+    if(typeof termMap == 'function') {
+      termMap = this.genArgProxies(termMap)
+    }
+    this.patternMap = termMap.map(([term, cb]) => {
       return [new Pattern(term), cb];
-    })
-    return term => { // my new favorite anti-pattern: fakeout constructors
+    });
+    return (function(term, ...otherArgs) {
       Types.validate(term);
-      for(let [pattern, callback] of patternMap) {
+      this.pushArgValues(otherArgs);
+      for(let [pattern, callback] of this.patternMap) {
         if(pattern.matches(term)) {
           let args = pattern.formatArgs(term);
-          //console.log('matched pattern', pattern.toString());
-          return callback(...args);
+          let retval = callback(...args);
+          this.popArgValues();
+          return retval;
         }
       }
+      this.popArgValues();
       throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${term._ancestors.toString()}])`);
+    }).bind(this);
+  }
+  getArgValue(n) {
+    let stack = this.argValueStacks[n];
+    let depth = stack.length - 1;
+    return stack[depth];
+  }
+  genArgProxies(func) {
+    this.argProxies = [];
+    this.argValueStacks = []; // for recursion or some shit
+    for(let i = 0; i < func.length; i++) {
+      let handler = {
+        get: (function(target, prop, receiver) {
+          if(prop == unwrapped) return this.getArgValue(i);
+          let arg = this.getArgValue(i);
+          let val = arg[prop];
+          if(typeof val == 'function') {
+            return val.bind(arg);
+          } else {
+            return val;
+          }
+        }).bind(this),
+        set: (function(obj, prop, value) {
+          this.getArgValue(i)[prop] = value;
+        }).bind(this),
+        apply: (function(target, thisArg, args) {
+          return this.getArgValue(i).apply(thisArg, args);
+        }).bind(this),
+        construct: (function(target, args) {
+          let _constructor = this.getArgValue(i);
+          return new _constructor(...args);
+        }).bind(this),
+      }
+      this.argProxies.push(new Proxy((function() {}), handler));
+      this.argValueStacks.push([]);
+    }
+    return func(...this.argProxies);
+  }
+  pushArgValues(args) {
+    if(!this.argValueStacks) return;
+    for(let i = 0; i < this.argValueStacks.length; i++) {
+      let arg = args[i];
+      this.argValueStacks[i].push(arg[unwrapped] || arg);
+    }
+  }
+  popArgValues() {
+    if(!this.argValueStacks) return;
+    for(let i = 0; i < this.argValueStacks.length; i++) {
+      this.argValueStacks[i].pop();
     }
   }
 }

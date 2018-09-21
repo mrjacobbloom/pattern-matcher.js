@@ -82,7 +82,7 @@ veriadic_list: { // break veriadic_list;
   console.log('toJSArray2', myList.toString(), toJSArray2(myList))
 }
 
-tree: { break tree;
+tree: { // break tree;
   let NumTree = new Term('NumTree').setAbstract();
   let Leaf = new Term('Leaf').extends(NumTree);
   let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
@@ -94,26 +94,26 @@ tree: { break tree;
     }]
   ]);
 
-  let treeMatches = function(tree, p) {
-    (new PatternMatcher([
+  let treeMatches = new PatternMatcher(pred => [
       [Leaf, () => true],
       [Node(Number, NumTree, NumTree), (num, left, right) => {
-        return p(num) && treeMatches(left, p) && treeMatches(right, p);
+        return pred(num) && treeMatches(left, pred) && treeMatches(right, pred);
       }]
-    ]))(tree);
-  };
+    ]
+  );
 
   let isBST = new PatternMatcher([
     [Leaf, () => true],
     [Node(Number, NumTree, NumTree), (num, left, right) => {
       return isBST(left) && isBST(right) &&
-      treeMatches(left, a => a < num) && treeMatches(tight, a => a > num);
+      treeMatches(left, a => a < num) && treeMatches(right, a => a > num);
     }]
   ]);
 
   let t1 = Leaf;
   let t2 = Node(10, Leaf, Leaf);
   let t3 = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)));
+  let t4 = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(6, Leaf, Leaf)));
 
   console.log('depth', t1.toString(), depth(t1));
   console.log('depth', t2.toString(), depth(t2));
@@ -122,5 +122,44 @@ tree: { break tree;
   console.log('isBST', t1.toString(), isBST(t1));
   console.log('isBST', t2.toString(), isBST(t2));
   console.log('isBST', t3.toString(), isBST(t3));
-  console.log('TODO: FIX THIS');
+  console.log('isBST', t4.toString(), isBST(t4));
+}
+
+map: { // break map
+  let Expression = new Term('Expression').setAbstract();
+  let Constant = new Term('Constant', [Number]).extends(Expression);
+  let Get = new Term('Get', [String]).extends(Expression);
+  let Store = new Term('Store', [String, Expression]).extends(Expression);
+  let Print = new Term('Print', [String]).extends(Expression);
+  let Program = new Term('Program', [Types.list(Expression)]);
+
+  let evalExpr = new PatternMatcher(env => [
+    [Constant(Number), (num) => {
+      return num;
+    }],
+    [Get(String), (identifier) => {
+      return env.get(identifier);
+    }],
+    [Store(String, Expression), (identifier, expr) => {
+      env.set(identifier, evalExpr(expr, env));
+    }],
+    [Print(String), (identifier) => {
+      console.log(env.get(identifier));
+    }],
+    
+  ]);
+
+  function evalProgram(program) {
+    let env = new Map();
+    let [expressions] = program.args;
+    expressions.forEach(expr => evalExpr(expr, env));
+  }
+
+  let myProgram = Program([
+    Store('x', Constant(1)),
+    Store('y', Get('x')),
+    Print('y'),
+  ]);
+
+  evalProgram(myProgram);
 }

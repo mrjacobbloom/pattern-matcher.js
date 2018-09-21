@@ -13,41 +13,39 @@ let Exp = new Term('Exp', [Expr]).extends(Expr);
 let Sine = new Term('Sine', [Expr]).extends(Expr);
 let Cosine = new Term('Cosine', [Expr]).extends(Expr);
 
-let scope = new Map([['x', 2], ['y', 1.5], ['z', 2.8]]);
-
-let evalExpr = new PatternMatcher([
+let evalExpr = new PatternMatcher(env => [
   [Const(Number), num => num],
   [Ident(String), ident => {
-    if(scope.has(ident)) {
-      return scope.get(ident);
+    if(env.has(ident)) {
+      return env.get(ident);
     } else {
       throw new Error(`Identifier ${ident} not defined`);
     }
   }],
   [Plus(Expr, Types.list(Expr, 1)), (l, rs) => {
-    return rs.reduce((acc, r) => acc + evalExpr(r), evalExpr(l));
+    return rs.reduce((acc, r) => acc + evalExpr(r, env), evalExpr(l, env));
   }],
   [Minus(Expr, Types.list(Expr, 1)), (l, rs) => {
-    return rs.reduce((acc, r) => acc - evalExpr(r), evalExpr(l));
+    return rs.reduce((acc, r) => acc - evalExpr(r, env), evalExpr(l, env));
   }],
   [Mult(Expr, Types.list(Expr, 1)), (l, rs) => {
-    return rs.reduce((acc, r) => acc * evalExpr(r), evalExpr(l));
+    return rs.reduce((acc, r) => acc * evalExpr(r, env), evalExpr(l, env));
   }],
   [Div(Expr, Expr), (l, r) => {
-    let c1 = evalExpr(l);
-    let c2 = evalExpr(r);
+    let c1 = evalExpr(l, env);
+    let c2 = evalExpr(r, env);
     if(c2 === 0) throw new Error('Division by zero');
     return c1 / c2;
   }],
   [Negate(Expr), (e) => evalExpr(e) * -1],
   [Log(Expr), (e) => {
-    let c = evalExpr(e);
+    let c = evalExpr(e, env);
     if(c <= 0) throw new Error(`Log of non positive value (${c})`);
     return Math.log(c);
   }],
-  [Exp(Expr), (e) => Math.exp(evalExpr(e))],
-  [Sine(Expr), (e) => Math.sin(evalExpr(e))],
-  [Cosine(Expr), (e) => Math.cos(evalExpr(e))],
+  [Exp(Expr), (e) => Math.exp(evalExpr(e, env))],
+  [Sine(Expr), (e) => Math.sin(evalExpr(e, env))],
+  [Cosine(Expr), (e) => Math.cos(evalExpr(e, env))],
 ]);
 
 let CondExpr = new Term('CondExpr').setAbstract();
@@ -60,33 +58,33 @@ let And = new Term('And', [CondExpr, CondExpr]).extends(CondExpr);
 let Or = new Term('Or', [CondExpr, CondExpr]).extends(CondExpr);
 let Not = new Term('Not', [CondExpr]).extends(CondExpr);
 
-let evalCondExpr = new PatternMatcher([
+let evalCondExpr = new PatternMatcher(env => [
   [ConstTrue, () => ConstTrue],
   [ConstFalse, () => ConstFalse],
   [Geq(Expr, Expr), (e1, e2) => {
-    if(evalExpr(e1) >= evalExpr(e2)) {
+    if(evalExpr(e1, env) >= evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
   [Leq(Expr, Expr), (e1, e2) => {
-    if(evalExpr(e1) <= evalExpr(e2)) {
+    if(evalExpr(e1, env) <= evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
   [Eq(Expr, Expr), (e1, e2) => {
-    if(evalExpr(e1) === evalExpr(e2)) {
+    if(evalExpr(e1, env) === evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
   [And(CondExpr, CondExpr), (c1, c2) => {
-    let ec1 = evalCondExpr(c1);
-    let ec2 = evalCondExpr(c2);
+    let ec1 = evalCondExpr(c1, env);
+    let ec2 = evalCondExpr(c2), env;
     if(ec1 == ConstTrue && ec2 == ConstTrue) {
       return ConstTrue;
     } else {
@@ -94,8 +92,8 @@ let evalCondExpr = new PatternMatcher([
     }
   }],
   [Or(CondExpr, CondExpr), (c1, c2) => {
-    let ec1 = evalCondExpr(c1);
-    let ec2 = evalCondExpr(c2);
+    let ec1 = evalCondExpr(c1, env);
+    let ec2 = evalCondExpr(c2, env);
     if(ec1 == ConstTrue || ec2 == ConstTrue) {
       return ConstTrue;
     } else {
@@ -118,53 +116,48 @@ let SwitchCase = new Term('SwitchCase', [Expr, Types.list(Statement)]).extends(C
 let DefaultCase = new Term('DefaultCase', [Types.list(Statement)]).extends(Case);
 let Switch = new Term('Switch', [Expr, Types.list(Case)]).extends(Statement);
 
-let evalStatement = new PatternMatcher([
+let evalStatement = new PatternMatcher(env => [
   [Assign(String, Expr), (ident, expr) => {
-    if(!scope.has(ident)) throw new Error(`Cannot assign a value to undeclared identifier ${ident}`);
-    scope.set(ident, evalExpr(expr));
+    if(!env.has(ident)) throw new Error(`Cannot assign a value to undeclared identifier ${ident}`);
+    env.set(ident, evalExpr(expr, env));
   }],
   [While(CondExpr, Types.list(Statement)), (cond, stmts) => {
-    while(evalCondExpr(cond) == ConstTrue) {
-      stmts.forEach(evalStatement);
+    while(evalCondExpr(cond, env) == ConstTrue) {
+      stmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
   [IfThenElse(CondExpr, Types.list(Statement)), (cond, trueStmts, falseStmts) => {
-    if(evalCondExpr(cond) == ConstTrue) {
-      trueStmts.forEach(evalStatement);
+    if(evalCondExpr(cond, env) == ConstTrue) {
+      trueStmts.forEach(stmt => evalStatement(stmt, env));
     } else {
-      falseStmts.forEach(evalStatement);
+      falseStmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
   [Switch(Expr, Types.list(Case)), (expr, cases) => {
     // @todo still need to figure out how to pass values around in these patternmatcher functions
   }],
   [ReturnStmt(Expr), (expr) => {
-    console.log('MYTHON PROGRAM RETURNED:', evalExpr(expr));
+    console.log('MYTHON PROGRAM RETURNED:', evalExpr(expr, env));
     // @todo: exit early from program if not final return?
   }],
 ]);
 
 let VarDecl = new Term('VarDecl', [String, Expr]);
-let evalVarDecl = new PatternMatcher([ // this feels like overkill lol
+let evalVarDecl = new PatternMatcher(env => [ // this feels like overkill lol
   [VarDecl(String, Expr), (ident, expr) => {
-    if(scope.has(ident)) throw new Error(`Identifier ${ident} already declared`);
-    scope.set(ident, evalExpr(expr));
+    if(env.has(ident)) throw new Error(`Identifier ${ident} already declared`);
+    env.set(ident, evalExpr(expr, env));
   }],
 ]);
 
 let Program = new Term('Program', [Types.list(VarDecl), Types.list(Statement), ReturnStmt])
 
-let _evalProgram = new PatternMatcher([
-  [Program(Types.list(VarDecl), Types.list(Statement), ReturnStmt), (decls, stmts, rtn) => {
-    decls.forEach(evalVarDecl);
-    stmts.forEach(evalStatement);
-    evalStatement(rtn)
-  }],
-]);
-
 let evalProgram = function(program) {
-  scope = new Map();
-  _evalProgram(program);
+  let env = new Map();
+  let [decls, stmts, rtn] = program.args;
+  decls.forEach(decl => evalVarDecl(decl, env) );
+  stmts.forEach(stmt => evalStatement(stmt, env));
+  evalStatement(rtn, env)
 }
 
 let myProgram = Program(
