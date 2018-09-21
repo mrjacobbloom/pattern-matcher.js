@@ -1,6 +1,6 @@
 import {Term, PatternMatcher, Types} from './pattern-matcher.mjs';
 
-natural_numbers: { //break natural_numbers;
+natural_numbers: { // break natural_numbers;
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
   let Z = new Term('Z').extends(NatNum);
   let Succ = new Term('Succ', [NatNum]).extends(NatNum);
@@ -34,7 +34,7 @@ natural_numbers: { //break natural_numbers;
   }
 }
 
-inductive_list: { //break inductive_list;
+inductive_list: { // break inductive_list;
   let NumList = new Term('NumList').setAbstract();
   let Nil = new Term('Nil').extends(NumList);
   let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
@@ -71,17 +71,18 @@ inductive_list: { //break inductive_list;
   console.log('isZigZag', zzList.toString(), isZigZag(zzList));
 }
 
-veriadic_list: { //break veriadic_list;
+veriadic_list: { // break veriadic_list;
   let List = new Term('List', [Types.list(Types.any)]);
   let toJSArray2 = new PatternMatcher([
-    [List(Types.list(Types.any)), (items) => items],
+    [List(Types.list(Types.any)), (items) => items.map(toJSArray2)],
     [Types.any, a => a], // default case
   ]);
-  let myList = List([1, 2, 'hello', List]);
+  let myList = List([1, 2, 'hello', List([])]);
+  console.log('toJSArray2', 2, toJSArray2(2))
   console.log('toJSArray2', myList.toString(), toJSArray2(myList))
 }
 
-tree: { //break tree;
+tree: { break tree;
   let NumTree = new Term('NumTree').setAbstract();
   let Leaf = new Term('Leaf').extends(NumTree);
   let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);

@@ -113,6 +113,7 @@ class Pattern {
   constructor(term) {
     if(term instanceof Pattern) return term;
     this.term = term;
+    this.formatArgs = this._formatArgs.bind(this); // freaking
     if(term._class) {
       this.type = term._class._proxy;
       if(term.args[0] == matchAnyArgs) {
@@ -169,7 +170,8 @@ class Pattern {
    * @param {TermInstance} term A TermInstance whose shape matches the pattern.
    * @returns {Array.<any>}
    */
-  formatArgs(term) {
+  _formatArgs(term) {
+    if(this.type == Types.any) return [term];
     let formatted = [];
     if(!term.args || !this.args.length) return formatted;
     for(let i = 0; i < term.args.length; i++) {
@@ -214,6 +216,7 @@ export class PatternMatcher {
 }
 
 let argMatches = (arg, expectedType) => {
+  if(expectedType == Types.any) return true;
   if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
     return arg._ancestors.includes(expectedType._ancestors[0]);
   } else {
@@ -278,7 +281,6 @@ export let Types = {
     }
     for(let i = 0; i < term.args.length; i++) {
       let expectedType = term._class.argTypes[i];
-      if(expectedType == Types.any) continue;
 
       let arg = term.args[i];
 
@@ -286,15 +288,16 @@ export let Types = {
         if(!Array.isArray(arg) || arg.length < expectedType.min || arg.length > expectedType.max) {
           throw new RangeError(`Argument ${i} of ${term._type} must be an array of length ${expectedType.min} - ${expectedType.max} (inclusive)`);
         }
-        for(let listitem of arg) {
-          if(!argMatches(listitem, expectedType.type)) {
-            if(!listitem._ancestors.includes(expectedType.type._ancestors[0])) throw new TypeError(`Argument ${i} of ${term._type} must be an array of ${expectedType._type || expectedType.name}`);
+        let listType = expectedType.type;
+        for(let listItem of arg) {
+          if(!argMatches(listItem, listType)) {
+            throw new TypeError(`Argument ${i} of ${term._type} must be an array of ${listType._type || listType.name || String(listType)} (found [${arg.toString()}])`);
           }
-          Types.validate(listitem);
+          Types.validate(listItem);
         }
       } else {
         if(!argMatches(arg, expectedType)) {
-          throw new TypeError(`Argument ${i} of ${term._type} must be of type ${expectedType._type || expectedType.name}`);
+          throw new TypeError(`Argument ${i} of ${term._type} must be of type ${expectedType._type || expectedType.name || String(expectedType)}`);
         }
         Types.validate(arg);
       }
