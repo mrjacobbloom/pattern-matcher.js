@@ -11,6 +11,7 @@ class TermInstance {
     this._ancestors = _class._ancestors;
     this._type = _class._type
     this.args = args;
+    this[Symbol.iterator] = args[Symbol.iterator].bind(args);
   }
   toString() {
     if(this.args[0] != matchAnyArgs && this.args.length) {
@@ -113,7 +114,6 @@ class Pattern {
   constructor(term) {
     if(term instanceof Pattern) return term;
     this.term = term;
-    this.formatArgs = this._formatArgs.bind(this); // freaking
     if(term._class) {
       this.type = term._class._proxy;
       if(term.args[0] == matchAnyArgs) {
@@ -161,30 +161,6 @@ class Pattern {
       return type == this.type;
     }
   }
-
-  /**
-   * This extracts arguments so they're nicely destructurable in case functions.
-   * Anything in the pattern that has arguments is turned into an array.
-   * For example, if the pattern was `Foo(Bar, Baz(Foo, Bar)`, given a term
-   * matching that shape this would extract `[bar, [foo, bar]]`
-   * @param {TermInstance} term A TermInstance whose shape matches the pattern.
-   * @returns {Array.<any>}
-   */
-  _formatArgs(term) {
-    if(this.type == Types.any) return [term];
-    let formatted = [];
-    if(!term.args || !this.args.length) return formatted;
-    for(let i = 0; i < term.args.length; i++) {
-      let argType = this.args[i];
-      let formatted_arg = argType.formatArgs(term.args[i]);
-      if(formatted_arg.length) {
-        formatted.push(formatted_arg);
-      } else {
-        formatted.push(term.args[i])
-      }
-    }
-    return formatted;
-  }
   toString() {
     return this.term.toString();
   }
@@ -215,8 +191,7 @@ export class PatternMatcher {
       this.pushArgValues(otherArgs);
       for(let [pattern, callback] of this.patternMap) {
         if(pattern.matches(term)) {
-          let args = pattern.formatArgs(term);
-          let retval = callback(...args);
+          let retval = callback(...(term.args || []));
           this.popArgValues();
           return retval;
         }

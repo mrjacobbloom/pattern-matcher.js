@@ -154,7 +154,7 @@ let Program = new Term('Program', [Types.list(VarDecl), Types.list(Statement), R
 
 let evalProgram = function(program) {
   let env = new Map();
-  let [decls, stmts, rtn] = program.args;
+  let [decls, stmts, rtn] = program;
   decls.forEach(decl => evalVarDecl(decl, env) );
   stmts.forEach(stmt => evalStatement(stmt, env));
   evalStatement(rtn, env)

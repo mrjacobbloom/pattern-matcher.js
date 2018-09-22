@@ -151,7 +151,7 @@ map: { // break map
 
   function evalProgram(program) {
     let env = new Map();
-    let [expressions] = program.args;
+    let [expressions] = program;
     expressions.forEach(expr => evalExpr(expr, env));
   }
 
