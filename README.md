@@ -40,7 +40,8 @@ let mySubtype = new Term('mySubtype', [mySupertype]).extends(mySupertype);
 
 The `PatternMatcher` constructor takes an array of 2-item arrays of patterns to
 match and functions to call in those cases. The functions are passed
-the arguments of the top-level term in a form that is easily destructurable:
+the arguments of the top-level term in a form that is Array-like and easily
+destructurable:
 
 ```javascript
 let NumList = new Term('NumList').setAbstract();

@@ -147,6 +147,7 @@ class Pattern {
       for(let i = 0; i < this.args.length; i++) {
         let argPattern = this.args[i];
         if(argPattern.term instanceof Types.List) {
+          if(term[i].length < argPattern.term.min || term[i].length > argPattern.term.max) return false;
           let listPattern = argPattern.term.pattern;
           for(let listitem of term[i]) {
             if(!listPattern.matches(listitem)) return false;
@@ -191,8 +192,13 @@ export class PatternMatcher {
       this.pushArgValues(otherArgs);
       for(let [pattern, callback] of this.patternMap) {
         if(pattern.matches(term)) {
-          let args = term[Symbol.iterator] ? term : [];
-          let retval = callback(...args);
+          let retval;
+          if(term[Symbol.iterator]) {
+            retval = callback(...term);
+          } else {
+            retval = callback(term);
+          }
+          
           this.popArgValues();
           return retval;
         }
