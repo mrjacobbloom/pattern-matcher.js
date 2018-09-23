@@ -113,6 +113,29 @@ let myProgram = Program([
 evalProgram(myProgram);
 ```
 
+You can also pass an "if guard" between the pattern and the callback. An if
+guard is a function that, if it returns false, causes the PatternMatcher to
+continue on to the next pattern. For example, here's an implementation of a BST.
+Note that the if guard comes before the callback:
+
+```javascript
+let NumTree = new Term('NumTree').setAbstract();
+let Leaf = new Term('Leaf').extends(NumTree);
+let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
+
+let insert = new PatternMatcher(newNum => [
+  [Leaf, () => Node(newNum.n, Leaf, Leaf)],
+  [Node, ([num]) => num == newNum, (num, left, right) => Node(num, left, right)],
+  [Node, ([num]) => newNum.n < num, (num, left, right) => Node(num, insert(left, newNum), right)],
+  [Node, ([num]) => newNum.n > num, (num, left, right) => Node(num, left, insert(right, newNum))],
+]);
+
+let mytree = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)));
+
+insert(mytree, {n:5});
+// Node(10, Node(8, Node(5, Leaf, Leaf), Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)))
+```
+
 ### `Types`
 
 `Types` is an object containing a few things:

@@ -172,11 +172,12 @@ let unwrapped = Symbol('unwrapped');
 /**
  * This is the pattern-matching part. Not a real constructor, I just like `new`
  * over names like `genPatternMatcher` *shrug*
+ * Either [term, callback] or [term, ifGuard, callback]
  * If you pass it a function, the arguments of that function will be available
  * to the case callbacks. Note that the arguments are proxies. They'll work
  * fine for predicates or environment var maps, but if you want to pass, say, a
  * number, you'll have to wrap it in an object of some kind.
- * @param {Array.<[TermInstance, Function]> | () => Array.<[TermInstance, Function]>} termMap
+ * @param {Array.<[TermInstance, Function, Function=]> | () => Array.<[TermInstance, Function, Function=]>} termMap
  * @returns {Function} a glorified switch statement.
  */
 export class PatternMatcher {
@@ -184,17 +185,24 @@ export class PatternMatcher {
     if(typeof termMap == 'function') {
       termMap = this.genArgProxies(termMap)
     }
-    this.patternMap = termMap.map(([term, cb]) => {
-      return [new Pattern(term), cb];
+    this.patternMap = termMap.map(([term, cb1, cb2]) => {
+      return {
+        pattern: new Pattern(term),
+        ifGuard: cb2 ? cb1 : null,
+        callback: cb2 || cb1
+      }
     });
     return (function(term, ...otherArgs) {
       Types.validate(term);
       this.pushArgValues(otherArgs);
-      for(let [pattern, callback] of this.patternMap) {
+      for(let {pattern, ifGuard, callback} of this.patternMap) {
         if(pattern.matches(term)) {
+          if(ifGuard && !ifGuard(term)) continue;
           let retval;
           if(term[Symbol.iterator]) {
+            try {
             retval = callback(...term);
+            } catch(e) {console.log('threw on callback', callback); console.error(e)}
           } else {
             retval = callback(term);
           }

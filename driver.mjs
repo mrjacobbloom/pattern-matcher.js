@@ -123,6 +123,15 @@ tree: { // break tree;
   console.log('isBST', t2.toString(), isBST(t2));
   console.log('isBST', t3.toString(), isBST(t3));
   console.log('isBST', t4.toString(), isBST(t4));
+
+  let insertBST = new PatternMatcher(newNum => [
+    [Leaf, () => Node(newNum.n, Leaf, Leaf)],
+    [Node, ([num]) => num == newNum, (num, left, right) => Node(num, left, right)], // @todo ident function?
+    [Node, ([num]) => newNum.n < num, (num, left, right) => Node(num, insertBST(left, newNum), right)],
+    [Node, ([num]) => newNum.n > num, (num, left, right) => Node(num, left, insertBST(right, newNum))],
+  ]);
+
+  console.log('insertBST(t3, {n:5})', t3.toString(), insertBST(t3, {n:5}).toString());
 }
 
 map: { // break map
