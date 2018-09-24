@@ -143,7 +143,7 @@ insert(mytree, {n:5});
 - `Types.validate(term)` - make sure all the arguments' types line up with
   the Term's expected types. This is automatically called at the start of every
   `PatternMatcher` function as well.
-- `Types.any` - Symbol representing any type. You'll probably want to use a
+- `Types.any` - Object representing any type. You'll probably want to use a
   supertype instead.
 - `Types.list(type, min=0, max=Infinity)` - Put
   this in any list of argument types, it means expect an array of that type
