@@ -205,12 +205,17 @@ export class PatternMatcher {
         if(pattern.matches(term)) {
           if(ifGuard && !ifGuard(term)) continue;
           let retval;
-          if(term[Symbol.iterator]) {
-            try {
-            retval = callback(...term);
-            } catch(e) {console.log('threw on callback', callback); console.error(e)}
-          } else {
-            retval = callback(term);
+          try {
+            if(term[Symbol.iterator]) {
+              retval = callback(...term);
+            } else {
+              retval = callback(term);
+            }
+          } catch(err) {
+            if(err.message.includes('undefined is not a function')) {
+              err.message = 'Destructuring failed (try adding or removing brackets)';
+            }
+            throw err;
           }
           
           this.popArgValues();
