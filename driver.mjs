@@ -125,9 +125,9 @@ tree: { // break tree;
 
   let insertBST = new PatternMatcher(newNum => [
     [Leaf, () => Node(newNum.n, Leaf, Leaf)],
-    [Node, ([num]) => num == newNum, (num, left, right) => Node(num, left, right)], // @todo ident function?
-    [Node, ([num]) => newNum.n < num, (num, left, right) => Node(num, insertBST(left, newNum), right)],
-    [Node, ([num]) => newNum.n > num, (num, left, right) => Node(num, left, insertBST(right, newNum))],
+    [Node, (num) => num == newNum, (num, left, right) => Node(num, left, right)], // @todo ident function?
+    [Node, (num) => newNum.n < num, (num, left, right) => Node(num, insertBST(left, newNum), right)],
+    [Node, (num) => newNum.n > num, (num, left, right) => Node(num, left, insertBST(right, newNum))],
   ]);
 
   console.log('insertBST(t3, {n:5})', t3.toString(), insertBST(t3, {n:5}).toString());

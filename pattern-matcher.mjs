@@ -203,12 +203,13 @@ export class PatternMatcher {
       this.pushArgValues(otherArgs);
       for(let {pattern, ifGuard, callback} of this.patternMap) {
         if(pattern.matches(term)) {
-          if(ifGuard && !ifGuard(term)) continue;
           let retval;
           try {
             if(term[Symbol.iterator]) {
+              if(ifGuard && ifGuard(...term)) continue;
               retval = callback(...term);
             } else {
+              if(ifGuard && ifGuard(term)) continue;
               retval = callback(term);
             }
           } catch(err) {

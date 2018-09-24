@@ -125,9 +125,9 @@ let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
 
 let insert = new PatternMatcher(newNum => [
   [Leaf, () => Node(newNum.n, Leaf, Leaf)],
-  [Node, ([num]) => num == newNum, (num, left, right) => Node(num, left, right)],
-  [Node, ([num]) => newNum.n < num, (num, left, right) => Node(num, insert(left, newNum), right)],
-  [Node, ([num]) => newNum.n > num, (num, left, right) => Node(num, left, insert(right, newNum))],
+  [Node, (num) => num == newNum, (num, left, right) => Node(num, left, right)],
+  [Node, (num) => newNum.n < num, (num, left, right) => Node(num, insert(left, newNum), right)],
+  [Node, (num) => newNum.n > num, (num, left, right) => Node(num, left, insert(right, newNum))],
 ]);
 
 let mytree = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)));
