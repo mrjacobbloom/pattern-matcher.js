@@ -1,10 +1,9 @@
-import {Term, PatternMatcher, Types} from './pattern-matcher.mjs';
+import {Term, PatternMatcher, Types, _} from './pattern-matcher.mjs';
 
 natural_numbers: { // break natural_numbers;
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
   let Z = new Term('Z').extends(NatNum);
   let Succ = new Term('Succ', [NatNum]).extends(NatNum);
-  //Succ.setArgTypes([Succ]);
 
   let getValue = new PatternMatcher([
     [Z, () => {
@@ -72,10 +71,10 @@ inductive_list: { // break inductive_list;
 }
 
 veriadic_list: { // break veriadic_list;
-  let List = new Term('List', [Types.list(Types.any)]);
+  let List = new Term('List', [_.list]);
   let toJSArray2 = new PatternMatcher([
-    [List(Types.list(Types.any)), (items) => items.map(toJSArray2)],
-    [Types.any, a => a], // default case
+    [List(_.list), (items) => items.map(toJSArray2)],
+    [_, a => a], // default case
   ]);
   let myList = List([1, 2, 'hello', List([])]);
   console.log('toJSArray2', 2, toJSArray2(2))
@@ -140,7 +139,7 @@ map: { // break map
   let Get = new Term('Get', [String]).extends(Expression);
   let Store = new Term('Store', [String, Expression]).extends(Expression);
   let Print = new Term('Print', [String]).extends(Expression);
-  let Program = new Term('Program', [Types.list(Expression)]);
+  let Program = new Term('Program', [Expression.list]);
 
   let evalExpr = new PatternMatcher(env => [
     [Constant(Number), (num) => {

@@ -144,11 +144,17 @@ insert(mytree, {n:5});
   the Term's expected types. This is automatically called at the start of every
   `PatternMatcher` function as well.
 - `Types.any` - Symbol representing any type. You'll probably want to use a
-  supertype instead
+  supertype instead.
 - `Types.list(type, min=0, max=Infinity)` - Put
   this in any list of argument types, it means expect an array of that type
   of size min-max (inclusive)
 - `Types.or(type1, type2...)` (not implemented yet, use a supertype instead)
+
+
+### Ergonomics aliases
+
+- `_` - alias for `Types.any` for convenience in writing types
+- `term.list` & `Types.any.list` - aliases for `Types.list(term)`
 
 
 ## Run it

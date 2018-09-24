@@ -107,33 +107,33 @@ let evalCondExpr = new PatternMatcher(env => [
 
 let Statement = new Term('Statement').setAbstract();
 let Assign = new Term('Assign', [String, Expr]).extends(Statement);
-let While = new Term('While', [CondExpr, Types.list(Statement)]).extends(Statement);
-let IfThenElse = new Term('IfThenElse', [CondExpr, Types.list(Statement), Types.list(Statement)]).extends(Statement); // idk what 2 rest params of the same type even means??
+let While = new Term('While', [CondExpr, Statement.list]).extends(Statement);
+let IfThenElse = new Term('IfThenElse', [CondExpr, Statement.list, Statement.list]).extends(Statement); // idk what 2 rest params of the same type even means??
 let ReturnStmt = new Term('ReturnStmt', [Expr]).extends(Statement);
 
 let Case = new Term('Case').setAbstract();
-let SwitchCase = new Term('SwitchCase', [Expr, Types.list(Statement)]).extends(Case);
-let DefaultCase = new Term('DefaultCase', [Types.list(Statement)]).extends(Case);
-let Switch = new Term('Switch', [Expr, Types.list(Case)]).extends(Statement);
+let SwitchCase = new Term('SwitchCase', [Expr, Statement.list]).extends(Case);
+let DefaultCase = new Term('DefaultCase', [Statement.list]).extends(Case);
+let Switch = new Term('Switch', [Expr, Case.list]).extends(Statement);
 
 let evalStatement = new PatternMatcher(env => [
   [Assign(String, Expr), (ident, expr) => {
     if(!env.has(ident)) throw new Error(`Cannot assign a value to undeclared identifier ${ident}`);
     env.set(ident, evalExpr(expr, env));
   }],
-  [While(CondExpr, Types.list(Statement)), (cond, stmts) => {
+  [While(CondExpr, Statement.list), (cond, stmts) => {
     while(evalCondExpr(cond, env) == ConstTrue) {
       stmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
-  [IfThenElse(CondExpr, Types.list(Statement)), (cond, trueStmts, falseStmts) => {
+  [IfThenElse(CondExpr, Statement.list), (cond, trueStmts, falseStmts) => {
     if(evalCondExpr(cond, env) == ConstTrue) {
       trueStmts.forEach(stmt => evalStatement(stmt, env));
     } else {
       falseStmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
-  [Switch(Expr, Types.list(Case)), (expr, cases) => {
+  [Switch(Expr, Case.list), (expr, cases) => {
     // @todo still need to figure out how to pass values around in these patternmatcher functions
   }],
   [ReturnStmt(Expr), (expr) => {
@@ -150,7 +150,7 @@ let evalVarDecl = new PatternMatcher(env => [ // this feels like overkill lol
   }],
 ]);
 
-let Program = new Term('Program', [Types.list(VarDecl), Types.list(Statement), ReturnStmt])
+let Program = new Term('Program', [VarDecl.list, Statement.list, ReturnStmt])
 
 let evalProgram = function(program) {
   let env = new Map();

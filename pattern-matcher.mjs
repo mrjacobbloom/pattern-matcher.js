@@ -13,6 +13,9 @@ class TermInstance extends Array {
     this._ancestors = _class._ancestors;
     this._type = _class._type;
   }
+  get list() {
+    return Types.list(this);
+  }
   toString() {
     if(this[0] != matchAnyArgs && this.length) {
       let argStrings = this.map(arg => {
@@ -100,6 +103,9 @@ export class Term {
   setAbstract(isAbstract = true) {
     this._self._isAbstract = isAbstract;
     return this._proxy; // for chainability
+  }
+  get list() {
+    return Types.list(this._apply(matchAnyArgs));
   }
   toString() {
     return this._type;
@@ -286,7 +292,11 @@ export let Types = {
    * Indicates that any type may be passed
    * @type {Symbol}
    */
-  any: Symbol('Types.any'),
+  any: {
+    get list() {
+      return Types.list(Types.any)
+    }
+  },
 
   Or: class {constructor(...types) {this.types = types;}},
   List: class {constructor(type, min = 0, max = Infinity) {
@@ -362,3 +372,5 @@ export let Types = {
     }
   }
 };
+
+export let _ = Types.any; // for convenience
