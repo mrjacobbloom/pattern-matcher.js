@@ -116,6 +116,22 @@ let SwitchCase = new Term('SwitchCase', [Expr, Statement.list]).extends(Case);
 let DefaultCase = new Term('DefaultCase', [Statement.list]).extends(Case);
 let Switch = new Term('Switch', [Expr, Case.list]).extends(Statement);
 
+let evalCase = new PatternMatcher((valueToMatch, env) => [
+  [SwitchCase, (e, statements) => {
+    let c = evalExpr(e, env);
+    if(c == valueToMatch) {
+      statements.forEach(stmt => evalStatement(stmt, env));
+      return true; // matched, break (?)
+    } else {
+      return false; // din't match, try the next one
+    }
+  }],
+  [DefaultCase, (statements) => {
+    statements.forEach(stmt => evalStatement(stmt, env));
+    return true;
+  }],
+]);
+
 let evalStatement = new PatternMatcher(env => [
   [Assign(String, Expr), (ident, expr) => {
     if(!env.has(ident)) throw new Error(`Cannot assign a value to undeclared identifier ${ident}`);
@@ -134,11 +150,15 @@ let evalStatement = new PatternMatcher(env => [
     }
   }],
   [Switch(Expr, Case.list), (expr, cases) => {
-    // @todo still need to figure out how to pass values around in these patternmatcher functions
+    let valueToMatch = evalExpr(expr, env);
+    for(let _case of cases) {
+      let doesBreak = evalCase(_case, valueToMatch, env);
+      if(doesBreak) return;
+    }
+    throw new Error(`No case matched ${expr.toString()} = ${valueToMatch} in a Switch statement`);
   }],
   [ReturnStmt(Expr), (expr) => {
     console.log('MYTHON PROGRAM RETURNED:', evalExpr(expr, env));
-    // @todo: exit early from program if not final return?
   }],
 ]);
 
@@ -169,7 +189,11 @@ let myProgram = Program(
     While(Leq(Ident('foo'), Const(10)), [
       Assign('foo', Plus(Ident('foo'), [Const(1)])),
       ReturnStmt(Ident('foo')),
-    ])
+      Switch(Ident('foo'), [
+        SwitchCase(Const(6), [ReturnStmt(Const(100))]),
+        DefaultCase([]),
+      ]),
+    ]),
   ],
   ReturnStmt(Ident('bar')),
 );
