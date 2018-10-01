@@ -1,0 +1,22 @@
+{
+  "name": "pattern-matcher-lettuce",
+  "version": "1.0.0",
+  "description": "Implementation of lettuce",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "run": "nearleyc grammar.ne -o grammar.mjs; node --experimental-modules driver.mjs",
+    "test": "echo \"\""
+  },
+  "author": "Jacob Bloom",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrjacobbloom/pattern-matcher.js/issues"
+  },
+  "homepage": "https://github.com/mrjacobbloom/pattern-matcher.js#readme",
+  "dependencies": {
+    "nearley": "^2.15.1"
+  }
+}

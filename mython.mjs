@@ -14,38 +14,38 @@ let Sine = new Term('Sine', [Expr]).extends(Expr);
 let Cosine = new Term('Cosine', [Expr]).extends(Expr);
 
 let evalExpr = new PatternMatcher(env => [
-  [Const(Number), num => num],
-  [Ident(String), ident => {
+  [Const(Number), ([num]) => num],
+  [Ident(String), ([ident]) => {
     if(env.has(ident)) {
       return env.get(ident);
     } else {
       throw new Error(`Identifier ${ident} not defined`);
     }
   }],
-  [Plus(Expr, Types.list(Expr, 1)), (l, rs) => {
+  [Plus(Expr, Types.list(Expr, 1)), ([l, rs]) => {
     return rs.reduce((acc, r) => acc + evalExpr(r, env), evalExpr(l, env));
   }],
-  [Minus(Expr, Types.list(Expr, 1)), (l, rs) => {
+  [Minus(Expr, Types.list(Expr, 1)), ([l, rs]) => {
     return rs.reduce((acc, r) => acc - evalExpr(r, env), evalExpr(l, env));
   }],
-  [Mult(Expr, Types.list(Expr, 1)), (l, rs) => {
+  [Mult(Expr, Types.list(Expr, 1)), ([l, rs]) => {
     return rs.reduce((acc, r) => acc * evalExpr(r, env), evalExpr(l, env));
   }],
-  [Div(Expr, Expr), (l, r) => {
+  [Div(Expr, Expr), ([l, r]) => {
     let c1 = evalExpr(l, env);
     let c2 = evalExpr(r, env);
     if(c2 === 0) throw new Error('Division by zero');
     return c1 / c2;
   }],
-  [Negate(Expr), (e) => evalExpr(e) * -1],
-  [Log(Expr), (e) => {
+  [Negate(Expr), ([e]) => evalExpr(e) * -1],
+  [Log(Expr), ([e]) => {
     let c = evalExpr(e, env);
     if(c <= 0) throw new Error(`Log of non positive value (${c})`);
     return Math.log(c);
   }],
-  [Exp(Expr), (e) => Math.exp(evalExpr(e, env))],
-  [Sine(Expr), (e) => Math.sin(evalExpr(e, env))],
-  [Cosine(Expr), (e) => Math.cos(evalExpr(e, env))],
+  [Exp(Expr), ([e]) => Math.exp(evalExpr(e, env))],
+  [Sine(Expr), ([e]) => Math.sin(evalExpr(e, env))],
+  [Cosine(Expr), ([e]) => Math.cos(evalExpr(e, env))],
 ]);
 
 let CondExpr = new Term('CondExpr').setAbstract();
@@ -61,28 +61,28 @@ let Not = new Term('Not', [CondExpr]).extends(CondExpr);
 let evalCondExpr = new PatternMatcher(env => [
   [ConstTrue, () => ConstTrue],
   [ConstFalse, () => ConstFalse],
-  [Geq(Expr, Expr), (e1, e2) => {
+  [Geq(Expr, Expr), ([e1, e2]) => {
     if(evalExpr(e1, env) >= evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
-  [Leq(Expr, Expr), (e1, e2) => {
+  [Leq(Expr, Expr), ([e1, e2]) => {
     if(evalExpr(e1, env) <= evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
-  [Eq(Expr, Expr), (e1, e2) => {
+  [Eq(Expr, Expr), ([e1, e2]) => {
     if(evalExpr(e1, env) === evalExpr(e2, env)) {
       return ConstTrue;
     } else {
       return ConstFalse;
     }
   }],
-  [And(CondExpr, CondExpr), (c1, c2) => {
+  [And(CondExpr, CondExpr), ([c1, c2]) => {
     let ec1 = evalCondExpr(c1, env);
     let ec2 = evalCondExpr(c2), env;
     if(ec1 == ConstTrue && ec2 == ConstTrue) {
@@ -91,7 +91,7 @@ let evalCondExpr = new PatternMatcher(env => [
       return ConstFalse;
     }
   }],
-  [Or(CondExpr, CondExpr), (c1, c2) => {
+  [Or(CondExpr, CondExpr), ([c1, c2]) => {
     let ec1 = evalCondExpr(c1, env);
     let ec2 = evalCondExpr(c2, env);
     if(ec1 == ConstTrue || ec2 == ConstTrue) {
@@ -100,7 +100,7 @@ let evalCondExpr = new PatternMatcher(env => [
       return ConstFalse;
     }
   }],
-  [Not(CondExpr), (c) => (c == ConstTrue) ? ConstFalse : ConstTrue],
+  [Not(CondExpr), ([c]) => (c == ConstTrue) ? ConstFalse : ConstTrue],
 ]);
 
 
@@ -117,7 +117,7 @@ let DefaultCase = new Term('DefaultCase', [Statement.list]).extends(Case);
 let Switch = new Term('Switch', [Expr, Case.list]).extends(Statement);
 
 let evalCase = new PatternMatcher((valueToMatch, env) => [
-  [SwitchCase, (e, statements) => {
+  [SwitchCase, ([e, statements]) => {
     let c = evalExpr(e, env);
     if(c == valueToMatch) {
       statements.forEach(stmt => evalStatement(stmt, env));
@@ -126,30 +126,30 @@ let evalCase = new PatternMatcher((valueToMatch, env) => [
       return false; // din't match, try the next one
     }
   }],
-  [DefaultCase, (statements) => {
+  [DefaultCase, ([statements]) => {
     statements.forEach(stmt => evalStatement(stmt, env));
     return true;
   }],
 ]);
 
 let evalStatement = new PatternMatcher(env => [
-  [Assign(String, Expr), (ident, expr) => {
+  [Assign(String, Expr), ([ident, expr]) => {
     if(!env.has(ident)) throw new Error(`Cannot assign a value to undeclared identifier ${ident}`);
     env.set(ident, evalExpr(expr, env));
   }],
-  [While(CondExpr, Statement.list), (cond, stmts) => {
+  [While(CondExpr, Statement.list), ([cond, stmts]) => {
     while(evalCondExpr(cond, env) == ConstTrue) {
       stmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
-  [IfThenElse(CondExpr, Statement.list), (cond, trueStmts, falseStmts) => {
+  [IfThenElse(CondExpr, Statement.list), ([cond, trueStmts, falseStmts]) => {
     if(evalCondExpr(cond, env) == ConstTrue) {
       trueStmts.forEach(stmt => evalStatement(stmt, env));
     } else {
       falseStmts.forEach(stmt => evalStatement(stmt, env));
     }
   }],
-  [Switch(Expr, Case.list), (expr, cases) => {
+  [Switch(Expr, Case.list), ([expr, cases]) => {
     let valueToMatch = evalExpr(expr, env);
     for(let _case of cases) {
       let doesBreak = evalCase(_case, valueToMatch, env);
@@ -157,14 +157,14 @@ let evalStatement = new PatternMatcher(env => [
     }
     throw new Error(`No case matched ${expr.toString()} = ${valueToMatch} in a Switch statement`);
   }],
-  [ReturnStmt(Expr), (expr) => {
+  [ReturnStmt(Expr), ([expr]) => {
     console.log('MYTHON PROGRAM RETURNED:', evalExpr(expr, env));
   }],
 ]);
 
 let VarDecl = new Term('VarDecl', [String, Expr]);
 let evalVarDecl = new PatternMatcher(env => [ // this feels like overkill lol
-  [VarDecl(String, Expr), (ident, expr) => {
+  [VarDecl(String, Expr), ([ident, expr]) => {
     if(env.has(ident)) throw new Error(`Identifier ${ident} already declared`);
     env.set(ident, evalExpr(expr, env));
   }],

@@ -15,7 +15,9 @@ the `new` keyword. But I like `new` so
 - `pattern-matcher.mjs` is the library or whatever.
 - `driver.mjs` is a set of inductive implementations of various structures that
   mirror Scala code from my class
-- `mython.mjs` is an implementation of a language we're using in my class.
+- `mython.mjs` is an implementation of a language we're doing in my class.
+- `lettuce/` is an entire implementation of another language we're doing in my
+  class, including a parser using Nearley.
 
 ## API
 
@@ -24,7 +26,7 @@ the `new` keyword. But I like `new` so
 The `Term` constructor returns a callable and represents a type.
 
 ```javascript
-import {Term} from './pattern-matcher.mjs';
+import {Term, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
 /*
  * Term takes 2 arguments, the name of the type (for error logging) and
  * (optionally) an array of types it takes as arguments. You can also change
@@ -39,9 +41,8 @@ let mySubtype = new Term('mySubtype', [mySupertype]).extends(mySupertype);
 ### `PatternMatcher`
 
 The `PatternMatcher` constructor takes an array of 2-item arrays of patterns to
-match and functions to call in those cases. The functions are passed
-the arguments of the top-level term in a form that is Array-like and easily
-destructurable:
+match and functions to call in those cases. The functions are passed the term,
+which is Array-like and easily destructurable:
 
 ```javascript
 let NumList = new Term('NumList').setAbstract();
@@ -53,13 +54,13 @@ let isZigZag = new PatternMatcher([
   [Nil, () => {
     return true
   }],
-  [Cons(Number, Nil), (a, nil) => {
+  [Cons(Number, Nil), ([a, nil]) => {
     return true;
   }],
-  [Cons(Number, Cons(Number, Nil)), (a, [b, nil]) => {
+  [Cons(Number, Cons(Number, Nil)), ([a, [b, nil]]) => {
     return a != b;
   }],
-  [Cons(Number, Cons(Number, Cons(Number, NumList))), (a, [b, [c, rest]]) => {
+  [Cons(Number, Cons(Number, Cons(Number, NumList))), ([a, [b, [c, rest]]]) => {
     return ((a > b && b < c) || (a < b && b > c))
       && isZigZag(Cons(b, Cons(c, rest)));
   }],
@@ -80,19 +81,19 @@ let Constant = new Term('Constant', [Number]).extends(Expression);
 let Get = new Term('Get', [String]).extends(Expression);
 let Store = new Term('Store', [String, Expression]).extends(Expression);
 let Print = new Term('Print', [String]).extends(Expression);
-let Program = new Term('Program', [Types.list(Expression)]);
+let Program = new Term('Program', [Expression.list]);
 
 let evalExpr = new PatternMatcher(env => [
-  [Constant(Number), (num) => {
+  [Constant(Number), ([num]) => {
     return num;
   }],
-  [Get(String), (identifier) => {
+  [Get(String), ([identifier]) => {
     return env.get(identifier);
   }],
-  [Store(String, Expression), (identifier, expr) => {
+  [Store(String, Expression), ([identifier, expr]) => {
     env.set(identifier, evalExpr(expr, env));
   }],
-  [Print(String), (identifier) => {
+  [Print(String), ([identifier]) => {
     console.log(env.get(identifier));
   }],
   
@@ -125,9 +126,9 @@ let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
 
 let insert = new PatternMatcher(newNum => [
   [Leaf, () => Node(newNum.n, Leaf, Leaf)],
-  [Node, (num) => num == newNum, (num, left, right) => Node(num, left, right)],
-  [Node, (num) => newNum.n < num, (num, left, right) => Node(num, insert(left, newNum), right)],
-  [Node, (num) => newNum.n > num, (num, left, right) => Node(num, left, insert(right, newNum))],
+  [Node, ([num]) => newNum.n == num, ([num, left, right]) => Node(num, left, right)],
+  [Node, ([num]) => newNum.n <  num, ([num, left, right]) => Node(num, insert(left, newNum), right)],
+  [Node, ([num]) => newNum.n >  num, ([num, left, right]) => Node(num, left, insert(right, newNum))],
 ]);
 
 let mytree = Node(10, Node(8, Leaf, Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)));
@@ -150,6 +151,9 @@ insert(mytree, {n:5});
   of size min-max (inclusive)
 - `Types.or(type1, type2...)` (not implemented yet, use a supertype instead)
 
+### `ScopedMap`
+
+`ScopedMap` is a Map-like object that allows you to push and pop scopes.
 
 ### Ergonomics aliases
 

@@ -1,4 +1,4 @@
-import {Term, PatternMatcher, Types, _} from './pattern-matcher.mjs';
+import {Term, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
 
 natural_numbers: { // break natural_numbers;
   let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
@@ -9,7 +9,7 @@ natural_numbers: { // break natural_numbers;
     [Z, () => {
       return 0;
     }],
-    [Succ(NatNum), (natnum) => {
+    [Succ(NatNum), ([natnum]) => {
       return getValue(natnum) + 1;
     }],
   ]);
@@ -18,7 +18,7 @@ natural_numbers: { // break natural_numbers;
     [Z, () => {
       return true;
     }],
-    [Succ(NatNum), (natnum) => {
+    [Succ(NatNum), ([natnum]) => {
       return !isEven(natnum);
     }],
   ]);
@@ -39,10 +39,10 @@ inductive_list: { // break inductive_list;
   let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
 
   let toJSArray = new PatternMatcher([
-    [Cons(Number, Nil), (number, nil) => {
+    [Cons(Number, Nil), ([number]) => {
       return [number];
     }],
-    [Cons(Number, Cons), (number, cons) => {
+    [Cons(Number, Cons), ([number, cons]) => {
       return [number].concat(toJSArray(cons));
     }]
   ]);
@@ -51,13 +51,13 @@ inductive_list: { // break inductive_list;
     [Nil, () => {
       return true
     }],
-    [Cons(Number, Nil), (a, nil) => {
+    [Cons(Number, Nil), ([a]) => {
       return true;
     }],
-    [Cons(Number, Cons(Number, Nil)), (a, [b, nil]) => {
+    [Cons(Number, Cons(Number, Nil)), ([a, [b]]) => {
       return a != b;
     }],
-    [Cons(Number, Cons(Number, Cons(Number, NumList))), (a, [b, [c, rest]]) => {
+    [Cons(Number, Cons(Number, Cons(Number, NumList))), ([a, [b, [c, rest]]]) => {
       return ((a > b && b < c) || (a < b && b > c))
         && isZigZag(Cons(b, Cons(c, rest)));
     }],
@@ -73,7 +73,7 @@ inductive_list: { // break inductive_list;
 veriadic_list: { // break veriadic_list;
   let List = new Term('List', [_.list]);
   let toJSArray2 = new PatternMatcher([
-    [List(_.list), (items) => items.map(toJSArray2)],
+    [List(_.list), ([items]) => items.map(toJSArray2)],
     [_, a => a], // default case
   ]);
   let myList = List([1, 2, 'hello', List([])]);
@@ -88,14 +88,14 @@ tree: { // break tree;
 
   let depth = new PatternMatcher([
     [Leaf, () => 0],
-    [Node(Number, NumTree, NumTree), (_, left, right) => {
+    [Node(Number, NumTree, NumTree), ([_, left, right]) => {
       return 1 + Math.max(depth(left), depth(right));
     }]
   ]);
 
   let treeMatches = new PatternMatcher(pred => [
       [Leaf, () => true],
-      [Node(Number, NumTree, NumTree), (num, left, right) => {
+      [Node(Number, NumTree, NumTree), ([num, left, right]) => {
         return pred(num) && treeMatches(left, pred) && treeMatches(right, pred);
       }]
     ]
@@ -103,7 +103,7 @@ tree: { // break tree;
 
   let isBST = new PatternMatcher([
     [Leaf, () => true],
-    [Node(Number, NumTree, NumTree), (num, left, right) => {
+    [Node(Number, NumTree, NumTree), ([num, left, right]) => {
       return isBST(left) && isBST(right) &&
       treeMatches(left, a => a < num) && treeMatches(right, a => a > num);
     }]
@@ -125,9 +125,9 @@ tree: { // break tree;
 
   let insertBST = new PatternMatcher(newNum => [
     [Leaf, () => Node(newNum.n, Leaf, Leaf)],
-    [Node, (num) => num == newNum, (num, left, right) => Node(num, left, right)], // @todo ident function?
-    [Node, (num) => newNum.n < num, (num, left, right) => Node(num, insertBST(left, newNum), right)],
-    [Node, (num) => newNum.n > num, (num, left, right) => Node(num, left, insertBST(right, newNum))],
+    [Node, ([num]) => newNum.n == num, ([num, left, right]) => Node(num, left, right)], // @todo ident function?
+    [Node, ([num]) => newNum.n <  num, ([num, left, right]) => Node(num, insertBST(left, newNum), right)],
+    [Node, ([num]) => newNum.n >  num, ([num, left, right]) => Node(num, left, insertBST(right, newNum))],
   ]);
 
   console.log('insertBST(t3, {n:5})', t3.toString(), insertBST(t3, {n:5}).toString());
@@ -142,16 +142,16 @@ map: { // break map
   let Program = new Term('Program', [Expression.list]);
 
   let evalExpr = new PatternMatcher(env => [
-    [Constant(Number), (num) => {
+    [Constant(Number), ([num]) => {
       return num;
     }],
-    [Get(String), (identifier) => {
+    [Get(String), ([identifier]) => {
       return env.get(identifier);
     }],
-    [Store(String, Expression), (identifier, expr) => {
+    [Store(String, Expression), ([identifier, expr]) => {
       env.set(identifier, evalExpr(expr, env));
     }],
-    [Print(String), (identifier) => {
+    [Print(String), ([identifier]) => {
       console.log(env.get(identifier));
     }],
     

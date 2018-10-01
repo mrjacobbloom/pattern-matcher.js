@@ -12,6 +12,7 @@ class TermInstance extends Array {
     this._class = _class;
     this._ancestors = _class._ancestors;
     this._type = _class._type;
+    this.instanceof = _class.instanceof;
   }
   get list() {
     return Types.list(this);
@@ -110,6 +111,10 @@ export class Term {
   toString() {
     return this._type;
   }
+  instanceof(type) {
+    if(type == Types.any) return true;
+    return this._ancestors.includes(type);
+  }
 }
 
 /**
@@ -205,13 +210,8 @@ export class PatternMatcher {
         if(pattern.matches(term)) {
           let retval;
           try {
-            if(term[Symbol.iterator]) {
-              if(ifGuard && ifGuard(...term)) continue;
-              retval = callback(...term);
-            } else {
-              if(ifGuard && ifGuard(term)) continue;
-              retval = callback(term);
-            }
+            if(ifGuard && ifGuard(term)) continue;
+            retval = callback(term);
           } catch(err) {
             if(err.message.includes('undefined is not a function')) {
               err.message = 'Destructuring failed (try adding or removing brackets)';
@@ -224,7 +224,7 @@ export class PatternMatcher {
         }
       }
       this.popArgValues();
-      throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${term._ancestors.toString()}])`);
+      throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${String(term._ancestors)}])`);
     }).bind(this);
   }
   getArgValue(n) {
@@ -380,3 +380,103 @@ export let Types = {
 };
 
 export let _ = Types.any; // for convenience
+
+export class ScopedMap {
+  /**
+   * A Map-like object that allows you to push and pop scopes
+   * @param {Map=} initial A Map defining the initial environment.
+   * @param {boolean=false} throwOnUndeclared If true, throw an exception when
+   * attempting to get or set a value that hasn't explicitly been declared.
+   */
+  constructor(initial = new Map(), throwOnUndeclared = false) {
+    this._stack = [initial];
+    this._throwOnUndeclared = throwOnUndeclared;
+  }
+  /**
+   * Push a new scope to the scope stack
+   * @param {Map=} map Initial values for this scope
+   */
+  push(map = new Map()) {
+    this._stack.push(map);
+  }
+  /**
+   * Pop a scope from the scope stack
+   */
+  pop() {
+    this._stack.pop();
+  }
+  /**
+   * Flatten the current scope stack into a vanilla Map (for lexical/static scoping)
+   * @return {Map}
+   */
+  flatten() { // @todo mutables?
+    let map = new Map();
+    for(let scope of this._stack) {
+      map = new Map([...map, ...scope]);
+    }
+    return map;
+  }
+  /**
+   * Get whether an identifier is defined anywhere in the scope stack
+   * @param {*} identifier This would probably be a string but who knows what
+   * weird languages you'll need to implement
+   * @returns {boolean}
+   */
+  has(identifier) {
+    for(let i = this._stack.length - 1; i >= 0; i--) {
+      let scope = this._stack[i];
+      if(scope.has(identifier)) return true;
+    }
+    return false;
+  }
+  /**
+   * Get the value bound to the identifier
+   * @param {*} identifier
+   * @throws if throwOnUndeclared=true, throws if identifier is undefined
+   */
+  get(identifier) {
+    for(let i = this._stack.length - 1; i >= 0; i--) {
+      let scope = this._stack[i];
+      if(scope.has(identifier)) return scope.get(identifier);
+    }
+    if(this._throwOnUndeclared) {
+      throw new Error(`Cannot get ${identifier}; it has not been declared in this scope`);
+    } else {
+      return undefined; // @todo symbol for undefined
+    }
+  }
+  /**
+   * Declare an identifier in the shallowest scope
+   * @param identifier 
+   */
+  declare(identifier) {
+    let scope = this._stack[this._stack.length - 1];
+    scope.set(identifier, undefined); // @todo symbol for undefined
+  }
+  /**
+   * Set a value to a given identifier. If it's already declared, set it in the
+   * shallowest scope it's found in. Otherwise, either throw
+   * (if throwOnUndeclared=true) or auto-declare it in the shallowest scope
+   * @param {*} identifier
+   * @param {*} value
+   * @throws if throwOnUndeclared=true, throws if identifier is undefined
+   */
+  set(identifier, value) {
+    if(this.has(identifier)) {
+      for(let i = this._stack.length - 1; i >= 0; i--) {
+        let scope = this._stack[i];
+        if(scope.has(identifier)) {
+          scope.set(identifier, value);
+          return;
+        }
+      }
+    } else {
+      if(this._throwOnUndeclared) {
+        throw new Error(`Cannot set ${identifier}=${value}; it has not been declared in this scope`);
+      } else {
+        let scope = this._stack[this._stack.length - 1];
+        scope.set(identifier, value);
+      }
+    }
+  }
+}
