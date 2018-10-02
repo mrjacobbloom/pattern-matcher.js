@@ -9,7 +9,7 @@ const lexer = moo.compile({
   keyword: ['let', 'in', 'function', 'true', 'false'],
   operator: [
     '!', '&&', '||',
-    '==', '<=', '>=',
+    '==', '>', '<', '<=', '>=',
     '=',
     '(', ')',
     '+', '-', '*', '/'
@@ -31,16 +31,16 @@ FunctionCall -> Identifier _o "(" _o Expression _o ")" {% t => d.FunctionCall(t[
 # Order of operations -- BNF is not a great way to do order of operations :(
 Expression ->
   Expr_Top                          {% id %}
-Arith_P ->
-  "(" _o Arith_P _o ")"             {% t => t[2] %}
+Arith_Val ->
+  "(" _o Cond_LogOp _o ")"          {% t => t[2] %}
 | VarGetter                         {% id %}
 | FunctionCall                      {% id %}
 | Constant                          {% id %}
 | BooleanConstant                   {% id %}
 Arith_MD ->
-  Arith_MD _o "*" _o Arith_P        {% t => d.Multiply(t[0], t[4]) %}
-| Arith_MD _o "/" _o Arith_P        {% t => d.Divide(t[0], t[4]) %}
-| Arith_P                           {% id %}
+  Arith_MD _o "*" _o Arith_Val      {% t => d.Multiply(t[0], t[4]) %}
+| Arith_MD _o "/" _o Arith_Val      {% t => d.Divide(t[0], t[4]) %}
+| Arith_Val                         {% id %}
 Arith_AS ->
   Arith_AS _o "+" _o Arith_MD       {% t => d.Add(t[0], t[4]) %}
 | Arith_AS _o "-" _o Arith_MD       {% t => d.Subtract(t[0], t[4]) %}
