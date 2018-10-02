@@ -24,8 +24,8 @@ rl.on('line', function(line){
     if(!parser.results.length) throw new Error('Program not parseable');
     let parsed = parser.results[0];
     let evaluated = evaluate(parsed);
-    let jsValues = evaluated.map(toJSValue);
-    console.log(jsValues.join('\n'));
+    let jsValue = toJSValue(evaluated);
+    console.log(jsValue);
   } catch(e) {
     console.error(e.message);
   }

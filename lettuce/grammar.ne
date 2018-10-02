@@ -22,7 +22,8 @@ let nuller = () => null;
 %}
 @lexer lexer
 
-Program -> (_o LetBinding):* _o {% t => d.Program(t[0].map(([n, b]) => b)) %}
+#Program -> (_o LetBinding):* _o {% t => d.Program(t[0].map(([n, b]) => b)) %}
+Program -> _o Expression _o {% t => d.Program(t[1]) %}
 
 LetBinding -> "let" _ Identifier _o "=" _o Expression _ "in" _ Expression {% t => d.LetBinding(t[2], t[6], t[10]) %}
 VarGetter -> Identifier {% t => d.VarGetter(t[0]) %}

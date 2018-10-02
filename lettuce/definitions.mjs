@@ -35,4 +35,4 @@ export let BooleanNot = new Term('BooleanNot', [Expression]).extends(LogicalOper
 export let BooleanAnd = new Term('BooleanAnd', [Expression, Expression]).extends(LogicalOperator);
 export let BooleanOr = new Term('BooleanOr', [Expression, Expression]).extends(LogicalOperator);
 
-export let Program = new Term('Program', [LetBinding.list]);
+export let Program = new Term('Program', [Expression]);

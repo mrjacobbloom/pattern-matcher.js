@@ -18,5 +18,5 @@ for(let program of programs) {
   let parsed = parser.results[0];
   console.log(parsed.toString());
   let evaluated = evaluate(parsed);
-  console.log(evaluated.map(String).join('\n'));
+  console.log(evaluated.toString());
 }

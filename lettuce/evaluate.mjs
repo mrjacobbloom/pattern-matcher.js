@@ -171,8 +171,8 @@ export let evaluate = function(program) {
   env.flattenedScopes = new Map();
   genNativeFunction('log', d.FunctionExpression('$1', d.LogE(d.VarGetter('$1'))), env);
   genNativeFunction('exp', d.FunctionExpression('$1', d.Exp(d.VarGetter('$1'))), env)
-  let [expressions] = program;
-  return expressions.map(expr => evalExpression(expr, env));
+  let [expression] = program;
+  return evalExpression(expression, env);
 };
 
 export let toJSValue = new PatternMatcher([
