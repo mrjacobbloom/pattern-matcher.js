@@ -387,10 +387,14 @@ export class ScopedMap {
    * @param {Map=} initial A Map defining the initial environment.
    * @param {boolean=false} throwOnUndeclared If true, throw an exception when
    * attempting to get or set a value that hasn't explicitly been declared.
+   * @param {boolean=false} frozen If true, all .set() actions are bound to
+   * the shallowest scope such that, when the scope is popped, the map is
+   * unchanged
    */
-  constructor(initial = new Map(), throwOnUndeclared = false) {
+  constructor(initial = new Map(), throwOnUndeclared = false, frozen = false) {
     this._stack = [initial];
     this._throwOnUndeclared = throwOnUndeclared;
+    this._frozen = frozen;
   }
   /**
    * Push a new scope to the scope stack
@@ -409,12 +413,12 @@ export class ScopedMap {
    * Flatten the current scope stack into a vanilla Map (for lexical/static scoping)
    * @return {Map}
    */
-  flatten() { // @todo mutables?
+  flatten(mutables = true) {
     let map = new Map();
     for(let scope of this._stack) {
       map = new Map([...map, ...scope]);
     }
-    return map;
+    return new ScopedMap(map, this._throwOnUndeclared, mutables);
   }
   /**
    * Get whether an identifier is defined anywhere in the scope stack
@@ -463,11 +467,15 @@ export class ScopedMap {
    */
   set(identifier, value) {
     if(this.has(identifier)) {
-      for(let i = this._stack.length - 1; i >= 0; i--) {
-        let scope = this._stack[i];
-        if(scope.has(identifier)) {
-          scope.set(identifier, value);
-          return;
+      if(this._frozen) {
+        let scope = this._stack[this._stack.length - 1];
+        scope.set(identifier, value);
+      } else {
+        for(let i = this._stack.length - 1; i >= 0; i--) {
+          let scope = this._stack[i];
+          if(scope.has(identifier)) {
+            scope.set(identifier, value);
+          }
         }
       }
     } else {

@@ -128,11 +128,18 @@ let evalExpression = new PatternMatcher(env => [
     let defValue = evalExpression(defExpression, env);
     if(defValue.instanceof(d.ErrorExpression)) return defValue;
     env.push(new Map([[ident, defValue]]));
+    if(bodyExpression.instanceof(d.FunctionExpression)) {
+      env.pop();
+      return d.ErrorExpression('Body of let binding may not be a function expression');
+    }
     let bodyValue = evalExpression(bodyExpression, env);
     env.pop();
     return bodyValue;
   }],
-  [d.FunctionExpression, a => a], // @todo: store it with a flattened scope
+  [d.FunctionExpression, term => {
+    env.flattenedScopes.set(term, env.flatten());
+    return term;
+  }], // @todo: store it with a flattened scope
   [d.VarGetter, ([ident]) => {
     if(!env.has(ident)) return d.ErrorExpression(`Variable ${ident} not declared`);
     return env.get(ident);
@@ -141,21 +148,29 @@ let evalExpression = new PatternMatcher(env => [
     if(!env.has(ident)) return d.ErrorExpression(`Function ${ident} not declared`);
     let funcExp = env.get(ident);
     if(!funcExp.instanceof(d.FunctionExpression)) return d.ErrorExpression(`${ident} is not a function`);
+    let funcScope = env.flattenedScopes.get(funcExp);
     let passedExprEvald = evalExpression(passedExpr, env);
     if(passedExprEvald.instanceof(d.ErrorExpression)) return passedExprEvald;
     let [argIdent, bodyExpression] = funcExp;
-    env.push(new Map([[argIdent, passedExprEvald]]));
-    let funcRetVal = evalExpression(bodyExpression, env);
-    env.pop();
+    // I don't care if this is technically saving a copy of arg each time, but I do need to ficure out how to deep-copy everything else
+    funcScope.push();
+    funcScope.set(argIdent, passedExprEvald);
+    let funcRetVal = evalExpression(bodyExpression, funcScope);
+    funcScope.pop();
     return funcRetVal;
   }],
 ]);
+let nativeScope = new ScopedMap(undefined, false, true);
+let genNativeFunction = function(identifier, body, env) {
+  env.set(identifier, body);
+  env.flattenedScopes.set(body, nativeScope);
+}
 
 let evalProgram = function(program) {
-  let env = new ScopedMap(new Map([
-    ['log', d.FunctionExpression('$1', d.LogE(d.VarGetter('$1')))],
-    ['exp', d.FunctionExpression('$1', d.Exp(d.VarGetter('$1')))]
-  ]));
+  let env = new ScopedMap();
+  env.flattenedScopes = new Map();
+  genNativeFunction('log', d.FunctionExpression('$1', d.LogE(d.VarGetter('$1'))), env);
+  genNativeFunction('exp', d.FunctionExpression('$1', d.Exp(d.VarGetter('$1'))), env)
   let [expressions] = program;
   expressions.forEach(expr => {
     console.log(evalExpression(expr, env).toString())
