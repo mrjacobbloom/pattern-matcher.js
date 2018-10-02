@@ -1,4 +1,4 @@
-import {PatternMatcher, ScopedMap} from '../pattern-matcher.mjs';
+import {PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
 import * as d from './definitions.mjs';
 
 let arithHelper = (term, env, callback) => {
@@ -166,15 +166,18 @@ let genNativeFunction = function(identifier, body, env) {
   env.flattenedScopes.set(body, nativeScope);
 }
 
-let evalProgram = function(program) {
+export let evaluate = function(program) {
   let env = new ScopedMap();
   env.flattenedScopes = new Map();
   genNativeFunction('log', d.FunctionExpression('$1', d.LogE(d.VarGetter('$1'))), env);
   genNativeFunction('exp', d.FunctionExpression('$1', d.Exp(d.VarGetter('$1'))), env)
   let [expressions] = program;
-  expressions.forEach(expr => {
-    console.log(evalExpression(expr, env).toString())
-  });
+  return expressions.map(expr => evalExpression(expr, env));
 };
 
-export default evalProgram;
+export let toJSValue = new PatternMatcher([
+  [d.Constant, ([num]) => num],
+  [d.BooleanConstant, term => (term.instanceof(d.BooleanTrue) ? true : false)],
+  [d.ErrorExpression, ([m]) => `Error: ${m}`],
+  [_, term => `[ ${term._type} ]`],
+]);

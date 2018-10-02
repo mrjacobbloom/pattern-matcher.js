@@ -8,6 +8,7 @@
   },
   "scripts": {
     "run": "nearleyc grammar.ne -o grammar.mjs; node --experimental-modules driver.mjs",
+    "repl": "nearleyc grammar.ne -o grammar.mjs; node --experimental-modules repl.mjs",
     "test": "echo \"\""
   },
   "author": "Jacob Bloom",

@@ -1,6 +1,6 @@
 import nearley from 'nearley';
 import grammar from './grammar.mjs';
-import evaluate from './evaluate.mjs';
+import {evaluate} from './evaluate.mjs';
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
@@ -15,7 +15,8 @@ let programs = [
 for(let program of programs) {
   let parser = new nearley.Parser(grammar2);
   parser.feed(program);
-  let results = parser.results[0];
-  console.log(results.toString());
-  evaluate(results);
+  let parsed = parser.results[0];
+  console.log(parsed.toString());
+  let evaluated = evaluate(parsed);
+  console.log(evaluated.map(String).join('\n'));
 }
