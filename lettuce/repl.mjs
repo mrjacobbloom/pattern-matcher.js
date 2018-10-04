@@ -14,10 +14,9 @@ var rl = readline.createInterface({
   terminal: true
 });
 
-let prevLine;
+rl.prompt();
 
 rl.on('line', function(line){
-  prevLine = line;
   try {
     let parser = new nearley.Parser(grammar2);
     parser.feed(line);
@@ -26,7 +25,9 @@ rl.on('line', function(line){
     let evaluated = evaluate(parsed);
     let jsValue = toJSValue(evaluated);
     console.log(jsValue);
+    rl.prompt();
   } catch(e) {
-    console.error(e.message);
+    console.log(e.message);
+    rl.prompt();
   }
 });
