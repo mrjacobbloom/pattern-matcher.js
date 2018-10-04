@@ -33,7 +33,7 @@ FunctionCall -> Identifier _o "(" _o Expression _o ")" {% t => d.FunctionCall(t[
 Expression ->
   Expr_Top                          {% id %}
 Arith_Val ->
-  "(" _o Cond_LogOp _o ")"          {% t => t[2] %}
+  "(" _o Expr_Top _o ")"            {% t => t[2] %}
 | VarGetter                         {% id %}
 | FunctionCall                      {% id %}
 | Constant                          {% id %}
