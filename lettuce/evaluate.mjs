@@ -101,6 +101,9 @@ let evalConditionalExpression = new PatternMatcher(env => [
       if(c1.instanceof(d.BooleanTrue) && c2.instanceof(d.BooleanTrue)) return d.BooleanTrue;
       if(c1.instanceof(d.BooleanFalse) && c2.instanceof(d.BooleanFalse)) return d.BooleanTrue;
       return d.BooleanFalse;
+    } else if(c1.instanceof(d.FunctionExpression) || c2.instanceof(d.FunctionExpression)) {
+      // is this defined? For now throw
+      return d.ErrorExpression(`Cannot compare function expressions at ${term.toString()}`);
     } else {
       return d.ErrorExpression(`Comparison of unlike types at ${term.toString()}`);
     }
