@@ -114,7 +114,7 @@ have a function `setLoc()` which accepts first and last tokens as either:
 This would ideally be set while parsing and can be used later when throwing
 errors and things.
 
-```ebnf
+```
 # this is Nearley syntax but should apply to anything
 FooBar -> "foo" %identifier "bar" {% t => FooBar(t[1]).setLoc(t[0], t[2]) %}
 ```
