@@ -1,0 +1,64 @@
+body {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+#toolbar {
+  background: #ddd;
+  padding: 5px;
+}
+#toolbar h1 {
+  font-weight: 100;
+  text-align: center;
+  margin: 0;
+}
+
+#main {
+  flex-grow: 1;
+  display: flex;
+}
+.col {
+  flex: 1;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column
+}
+.col:not(:last-child) {
+  border-right: 1px solid #ddd;
+}
+.col > h2 {
+  background: #ddd;
+  font-weight: 100;
+  text-align: center;
+  margin: 0;
+  padding: 5px;
+}
+.col-content {
+  flex-grow: 1;
+  position: relative;
+  max-width: calc(100vw / 3); /* flaexbox fails me */
+}
+
+.col-content > * {
+  width: 100%;
+  overflow: scroll;
+  position: relative;
+  height: 100%;
+}
+
+#results {
+  padding: 5px;
+}
+
+.rendered-tree-node {
+  background: lightblue;
+  border: 1px solid teal;;
+  border-radius: 5px;
+  padding: 2px;
+  transition: transform .2s;
+  transform: scale(1);
+}
+.rendered-tree-node:hover {
+  transform: scale(1.1);
+}

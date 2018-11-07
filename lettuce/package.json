@@ -7,9 +7,10 @@
     "lib": "lib"
   },
   "scripts": {
-    "run": "nearleyc grammar.ne -o grammar.mjs; node --experimental-modules driver.mjs",
-    "repl": "nearleyc grammar.ne -o grammar.mjs; node --experimental-modules repl.mjs",
-    "test": "echo \"\""
+    "compile": "nearleyc grammar.ne -o grammar.mjs",
+    "run": "npm run-script compile && node --experimental-modules driver.mjs",
+    "repl": "npm run-script compile && node --experimental-modules repl.mjs",
+    "test": "npm run-script compile && node --experimental-modules test/test.mjs"
   },
   "author": "Jacob Bloom",
   "license": "ISC",
@@ -18,6 +19,7 @@
   },
   "homepage": "https://github.com/mrjacobbloom/pattern-matcher.js#readme",
   "dependencies": {
-    "nearley": "^2.15.1"
+    "nearley": "^2.15.1",
+    "moo": "0.4.3"
   }
 }

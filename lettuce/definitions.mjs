@@ -1,38 +1,52 @@
 import {Term} from '../pattern-matcher.mjs';
 
-export let Expression = new Term('Expression').setAbstract();
+export let Program = new Term('Program').setAbstract();
+export let Expr = new Term('Expr').setAbstract();
+export let TopLevel = new Term('TopLevel', [Expr]).extends(Program);
 
-export let ErrorExpression = new Term('ErrorExpression', [String]).extends(Expression);
-export let LetBinding = new Term('LetBinding', [String, Expression, Expression]).extends(Expression);
-export let FunctionExpression = new Term('FunctionExpression', [String, Expression]).extends(Expression);
-export let VarGetter = new Term('VarGetter', [String]).extends(Expression);
-export let FunctionCall = new Term('FunctionCall', [String, Expression]).extends(Expression);
+export let ConstNum = new Term('ConstNum', [Number]).extends(Expr);
+export let ConstBool = new Term('ConstBool', [Boolean]).extends(Expr);
 
-export let ArithmeticExpression = new Term('ArithmeticExpression').extends(Expression).setAbstract();
-export let Constant = new Term('Constant', [Number]).extends(ArithmeticExpression);
-export let Add = new Term('Add', [Expression, Expression]).extends(ArithmeticExpression);
-export let Subtract = new Term('Subtract', [Expression, Expression]).extends(ArithmeticExpression);
-export let Multiply = new Term('Multiply', [Expression, Expression]).extends(ArithmeticExpression);
-export let Divide = new Term('Divide', [Expression, Expression]).extends(ArithmeticExpression);
-export let LogE = new Term('LogE', [Expression]).extends(ArithmeticExpression);
-export let Exp = new Term('Exp', [Expression]).extends(ArithmeticExpression);
+// This doubles as both variable getter and left hand side of bindings
+export let Ident = new Term('Ident', [String]).extends(Expr);
 
-export let ConditionalExpression = new Term('ConditionalExpression').extends(Expression).setAbstract();
+/* Arithmetic Operators */
+export let Plus = new Term('Plus', [Expr, Expr]).extends(Expr);
+export let Minus = new Term('Minus', [Expr, Expr]).extends(Expr);
+export let Mult = new Term('Mult', [Expr, Expr]).extends(Expr);
+export let Div = new Term('Div', [Expr, Expr]).extends(Expr);
+export let Log = new Term('Log', [Expr]).extends(Expr); // @todo: apparently these are unary operators and don't require parens
+export let Exp = new Term('Exp', [Expr]).extends(Expr);
+export let Sine = new Term('Sine', [Expr]).extends(Expr);
+export let Cosine = new Term('Cosine', [Expr]).extends(Expr);
 
-export let BooleanConstant = new Term('BooleanConstant').extends(ConditionalExpression);
-export let BooleanTrue = new Term('BooleanTrue').extends(BooleanConstant);
-export let BooleanFalse = new Term('BooleanFalse').extends(BooleanConstant);
+/* Comparison Operators */
+export let Eq = new Term('Eq', [Expr, Expr]).extends(Expr);
+export let Neq = new Term('Neq', [Expr, Expr]).extends(Expr);
+export let Geq = new Term('Geq', [Expr, Expr]).extends(Expr); // < and <= are sugared to this
+export let Gt = new Term('Gt', [Expr, Expr]).extends(Expr);
 
-export let ComparisonOperator = new Term('ComparisonOperator').extends(ConditionalExpression).setAbstract();
-export let Equals = new Term('Equals', [Expression, Expression]).extends(ComparisonOperator);
-export let LessThan = new Term('LessThan', [Expression, Expression]).extends(ComparisonOperator);
-export let GreaterThan = new Term('GreaterThan', [Expression, Expression]).extends(ComparisonOperator);
-export let LessThanOrEqual = new Term('LessThanOrEqual', [Expression, Expression]).extends(ComparisonOperator);
-export let GreaterThanOrEqual = new Term('GreaterThanOrEqual', [Expression, Expression]).extends(ComparisonOperator);
+/* Logical Operators */
+export let And = new Term('And', [Expr, Expr]).extends(Expr);
+export let Or = new Term('Or', [Expr, Expr]).extends(Expr);
+export let Not = new Term('Not', [Expr]).extends(Expr);
 
-export let LogicalOperator = new Term('LogicalOperator').extends(ConditionalExpression).setAbstract();
-export let BooleanNot = new Term('BooleanNot', [Expression]).extends(LogicalOperator);
-export let BooleanAnd = new Term('BooleanAnd', [Expression, Expression]).extends(LogicalOperator);
-export let BooleanOr = new Term('BooleanOr', [Expression, Expression]).extends(LogicalOperator);
+export let IfThenElse = new Term('IfThenElse', [Expr, Expr, Expr]).extends(Expr);
 
-export let Program = new Term('Program', [Expression]);
+/* Compound Expression Block */
+export let Block = new Term('Block', [Expr.list]).extends(Expr);
+
+/* Functions */
+// Note: functions can take multiple parameters now
+export let FunDef = new Term('FunDef', [Ident.list, Expr]).extends(Expr);
+export let FunCall = new Term('FunCall', [Expr, Expr.list]).extends(Expr);
+
+/* Let Bindings */
+// Note: things that would take strings now take Identifiers so they can store their location in the source
+export let Let = new Term('Let', [Ident, Expr, Expr]).extends(Expr);
+export let LetRec = new Term('LetRec', [Ident, FunDef, Expr]).extends(Expr); // todo: can we just make recursion always work?
+
+/* Explicit References */
+export let NewRef = new Term('NewRef', [Expr]).extends(Expr);
+export let AssignRef = new Term('AssignRef', [Expr, Expr]).extends(Expr);
+export let DeRef = new Term('DeRef', [Expr]).extends(Expr);

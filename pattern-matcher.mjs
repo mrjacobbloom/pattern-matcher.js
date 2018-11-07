@@ -13,6 +13,7 @@ class TermInstance extends Array {
     this._ancestors = _class._ancestors;
     this._type = _class._type;
     this.instanceof = _class.instanceof;
+    this.loc = [[-1, -1], [-1, -1]]; // [[start line, start col], [end line, end col]]
   }
   get list() {
     return Types.list(this);
@@ -35,6 +36,31 @@ class TermInstance extends Array {
     } else {
       return this._type;
     }
+  }
+  setLoc(start, end) {
+    if(!start) return this;
+    let startline = -1, startcol = -1, endline = -1, endcol = -1;
+    if(start.loc) {
+      [startline, startcol] = start.loc[0];
+    } else if(start.line) {
+      startline = start.line;
+      startcol = start.col;
+    }
+
+    if(end) {
+      if(end.loc) {
+        [endline, endcol] = end.loc[1]
+      } else if(end.text) {
+        endline = end.line;
+        endcol = end.col + end.text.length;
+      }
+    } else if(start.text) {
+      endline = startline;
+      endcol = startcol + start.text.length;
+    }
+
+    this.loc = [[startline, startcol], [endline, endcol]];
+    return this;
   }
 }
 

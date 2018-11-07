@@ -1,186 +1,181 @@
 import {PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
+import {LettuceStore} from './store.mjs'
+import * as err from './errors.mjs';
 import * as d from './definitions.mjs';
-
-let arithHelper = (term, env, callback) => {
-  let [e1, e2] = term;
-  let c1 = evalExpression(e1, env);
-  let c2 = e2 ? evalExpression(e2, env) : undefined;
-  if(c1.instanceof(d.ErrorExpression)) return c1;
-  if(e2) if(c2.instanceof(d.ErrorExpression)) return c2;
-  if(!c1.instanceof(d.Constant) || (e2 && !c2.instanceof(d.Constant))) {
-    return d.ErrorExpression(`Unexpected non-numeric argument at ${term.toString()}`)
-  }
-  let [n1] = c1;
-  let [n2] = e2 ? c2 : [undefined];
-  return callback(n1, n2);
-};
-
-let evalArithmeticExpression = new PatternMatcher(env => [
-  [d.Constant, a => a],
-  [d.Add, term => {
-    return arithHelper(term, env, (a,b) => d.Constant(a + b));
-  }],
-  [d.Subtract, term => {
-    return arithHelper(term, env, (a,b) => d.Constant(a - b));
-  }],
-  [d.Multiply, term => {
-    return arithHelper(term, env, (a,b) => d.Constant(a * b));
-  }],
-  [d.Divide, term => {
-    return arithHelper(term, env, (a,b) => {
-      if(b == 0) return ErrorExpression(`Divide by 0 error at ${term.toString()}`);
-      return d.Constant(a / b);
-    });
-  }],
-  [d.LogE, term => {
-    return arithHelper(term, env, a => {
-      if(a <= 0) return ErrorExpression(`Logarithm error at ${log.toString()}`);
-      return d.Constant(Math.log(a));
-    });
-  }],
-  [d.Exp, term => {
-    return arithHelper(term, env, a => d.Constant(Math.exp(a)));
-  }],
-]);
-
-let evalConditionalExpression = new PatternMatcher(env => [
-  [d.BooleanConstant, a => a],
-  [d.BooleanNot, term => {
-    let [e] = term;
-    let c = evalExpression(e, env);
-    if(c.instanceof(d.ErrorExpression)) return c;
-    if(!c.instanceof(d.BooleanConstant)) {
-      return d.ErrorExpression(`Unexpected non-boolean argument at ${term.toString()}`)
-    }
-    if(c.instanceof(d.BooleanTrue)) return d.BooleanFalse;
-    if(c.instanceof(d.BooleanFalse)) return d.BooleanTrue;
-  }],
-  [d.BooleanAnd, term => {
-    let [e1, e2] = term;
-    let c1 = evalExpression(e1, env);
-    if(c1.instanceof(d.ErrorExpression)) return c1;
-    if(!c1.instanceof(d.BooleanConstant)) {
-      return d.ErrorExpression(`Unexpected non-boolean argument at ${term.toString()}`)
-    }
-    if(c1.instanceof(d.BooleanFalse)) return d.BooleanTrue;
-    
-    let c2 = evalExpression(e2, env);
-    if(c2.instanceof(d.ErrorExpression)) return c2;
-    if(!c2.instanceof(d.BooleanConstant)) {
-      return ErrorExpression(`Unexpected non-boolean argument at ${term.toString()}`)
-    }
-    return c2;
-  }],
-  [d.BooleanOr, term => {
-    let [e1, e2] = term;
-    let c1 = evalExpression(e1, env);
-    if(c1.instanceof(ErrorExpression)) return c1;
-    if(!c1.instanceof(BooleanConstant)) {
-      return d.ErrorExpression(`Unexpected non-boolean argument at ${term.toString()}`)
-    }
-    if(c1.instanceof(d.BooleanTrue)) return d.BooleanTrue;
-    
-    let c2 = evalExpression(e2, env);
-    if(c2.instanceof(d.ErrorExpression)) return c2;
-    if(!c2.instanceof(d.BooleanConstant)) {
-      return ErrorExpression(`Unexpected non-boolean argument at ${term.toString()}`)
-    }
-    return c2;
-  }],
-  [d.Equals, term => {
-    let [e1, e2] = term;
-    let c1 = evalExpression(e1, env);
-    let c2 = evalExpression(e2, env);
-    if(c1.instanceof(d.ErrorExpression)) return c1;
-    if(c2.instanceof(d.ErrorExpression)) return c2;
-    if(c1.instanceof(d.Constant) && c2.instanceof(d.Constant)) {
-      let [n1] = c1;
-      let [n2] = c2;
-      return (n1 == n2) ? d.BooleanTrue : d.BooleanFalse;
-    } else if(c1.instanceof(d.BooleanConstant) && c2.instanceof(d.BooleanConstant)) {
-      if(c1.instanceof(d.BooleanTrue) && c2.instanceof(d.BooleanTrue)) return d.BooleanTrue;
-      if(c1.instanceof(d.BooleanFalse) && c2.instanceof(d.BooleanFalse)) return d.BooleanTrue;
-      return d.BooleanFalse;
-    } else if(c1.instanceof(d.FunctionExpression) || c2.instanceof(d.FunctionExpression)) {
-      // is this defined? For now throw
-      return d.ErrorExpression(`Cannot compare function expressions at ${term.toString()}`);
-    } else {
-      return d.ErrorExpression(`Comparison of unlike types at ${term.toString()}`);
-    }
-  }],
-  [d.LessThan, term => arithHelper(term, env, (a, b) => {
-    return (a < b) ? d.BooleanTrue : d.BooleanFalse;
-  })],
-  [d.GreaterThan, term => arithHelper(term, env, (a, b) => {
-    return (a > b) ? d.BooleanTrue : d.BooleanFalse;
-  })],
-  [d.LessThanOrEqual, term => arithHelper(term, env, (a, b) => {
-    return (a <= b) ? d.BooleanTrue : d.BooleanFalse;
-  })],
-  [d.GreaterThanOrEqual, term => arithHelper(term, env, (a, b) => {
-    return (a >= b) ? d.BooleanTrue : d.BooleanFalse;
-  })],
-]);
-
-// this could've been one giant function but ew
-let evalExpression = new PatternMatcher(env => [
-  [d.ErrorExpression, a => a],
-  [d.ArithmeticExpression, expr => evalArithmeticExpression(expr, env)],
-  [d.ConditionalExpression, expr => evalConditionalExpression(expr, env)],
-  [d.LetBinding, ([ident, defExpression, bodyExpression]) => {
-    let defValue = evalExpression(defExpression, env);
-    if(defValue.instanceof(d.ErrorExpression)) return defValue;
-    env.push(new Map([[ident, defValue]]));
-    if(bodyExpression.instanceof(d.FunctionExpression)) {
-      env.pop();
-      return d.ErrorExpression('Body of let binding may not be a function expression');
-    }
-    let bodyValue = evalExpression(bodyExpression, env);
-    env.pop();
-    return bodyValue;
-  }],
-  [d.FunctionExpression, term => {
-    env.flattenedScopes.set(term, env.flatten());
-    return term;
-  }], // @todo: store it with a flattened scope
-  [d.VarGetter, ([ident]) => {
-    if(!env.has(ident)) return d.ErrorExpression(`Variable ${ident} not declared`);
-    return env.get(ident);
-  }],
-  [d.FunctionCall, ([ident, passedExpr]) => {
-    if(!env.has(ident)) return d.ErrorExpression(`Function ${ident} not declared`);
-    let funcExp = env.get(ident);
-    if(!funcExp.instanceof(d.FunctionExpression)) return d.ErrorExpression(`${ident} is not a function`);
-    let funcScope = env.flattenedScopes.get(funcExp);
-    let passedExprEvald = evalExpression(passedExpr, env);
-    if(passedExprEvald.instanceof(d.ErrorExpression)) return passedExprEvald;
-    let [argIdent, bodyExpression] = funcExp;
-    // I don't care if this is technically saving a copy of arg each time, but I do need to ficure out how to deep-copy everything else
-    funcScope.push();
-    funcScope.set(argIdent, passedExprEvald);
-    let funcRetVal = evalExpression(bodyExpression, funcScope);
-    funcScope.pop();
-    return funcRetVal;
-  }],
-]);
-let nativeScope = new ScopedMap(undefined, false, true);
-let genNativeFunction = function(identifier, body, env) {
-  env.set(identifier, body);
-  env.flattenedScopes.set(body, nativeScope);
-}
+import * as v from './values.mjs';
 
 export let evaluate = function(program) {
-  let env = new ScopedMap();
-  env.flattenedScopes = new Map();
-  genNativeFunction('log', d.FunctionExpression('$1', d.LogE(d.VarGetter('$1'))), env);
-  genNativeFunction('exp', d.FunctionExpression('$1', d.Exp(d.VarGetter('$1'))), env)
-  let [expression] = program;
-  return evalExpression(expression, env);
+   // an alternative to immutable maps for scoping: a stack-map
+  let env = new ScopedMap(undefined, false, true);
+  let store = new LettuceStore();
+  let [expr] = program;
+  return evalExpr(expr, env, store);
 };
 
-export let toJSValue = new PatternMatcher([
-  [d.Constant, ([num]) => num],
-  [d.BooleanConstant, term => (term.instanceof(d.BooleanTrue) ? true : false)],
-  [d.ErrorExpression, ([m]) => `Error: ${m}`],
-  [_, term => `[ ${term._type} ]`],
+/**
+ * Evaluates the expressions, unwraps them with unwrapFunc, then call the
+ * callback with the unwrapped values. It's like, Monads or something.
+ * @param {Term|Expr[]} exprs Array of expressions to unwrap and pass to
+ *  callback. Heck, just pass the whole termInstance, see if I care.
+ * @param {ScopedMap} env 
+ * @param {LettuceStore} store 
+ * @param {Function} unwrapFunc 
+ * @param {Function} callback
+ * @returns {*} Return value of callback
+ */
+let unwrap = (exprs, env, store, unwrapFunc, callback) => {
+  let vs = exprs.map(expr => unwrapFunc(evalExpr(expr, env, store), expr));
+  return callback(...vs);
+};
+
+let evalExpr = new PatternMatcher((env, store) => [
+  [d.ConstNum, ([n]) => v.NumValue(n)],
+  [d.ConstBool, ([b]) => v.BoolValue(b)],
+  [d.Ident, term => {
+    let [s] = term;
+    if(!env.has(s)) throw new err.LettuceRuntimeError(`${s} is not defined`, term);
+    return env.get(s)
+  }],
+
+  /* Arithmetic Operators */
+  [d.Plus, term => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 + v2))
+  ],
+  [d.Minus, term => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 - v2))
+  ],
+  [d.Mult, term => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 * v2))
+  ],
+  [d.Div, term => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 / v2))
+  ],
+  [d.Log, term =>
+    // automagically handles 1 arg now
+    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.log(v1)))
+  ],
+  [d.Exp, term =>
+    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.exp(v1)))
+  ],
+  [d.Sine, term =>
+    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.sin(v1)))
+  ],
+  [d.Cosine, term =>
+    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.cos(v1)))
+  ],
+
+  /* Comparison Operators */
+  [d.Eq, term =>
+    // The reference implementation throws if you compare anything but NumValues
+    // I think you should be able to Eq compare any values of the same type
+    // but we can add that some other time cuz it's kinda a lotta work
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 === v2))
+  ],
+  [d.Neq, term =>
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 != v2))
+  ],
+  [d.Gt, term =>
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 > v2))
+  ],
+  [d.Geq, term =>
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 >= v2))
+  ],
+
+  /* Logical Operators */
+  [d.Not, term =>
+    unwrap(term, env, store, v.valueToBool, v1 => v.BoolValue(!v1))
+  ],
+  [d.And, term =>
+    // Do we care about short-circuiting? Reference implementation doesn't see to
+    unwrap(term, env, store, v.valueToBool, (v1, v2) => v.BoolValue(v1 && v2))
+  ],
+  [d.Or, term =>
+    unwrap(term, env, store, v.valueToBool, (v1, v2) => v.BoolValue(v1 || v2))
+  ],
+
+
+  [d.IfThenElse, ([cond, trueExpr, falseExpr]) => {
+    let condVal = v.valueToBool(evalExpr(cond, env, store), cond);
+    if(condVal) {
+      return evalExpr(trueExpr, env, store);
+    } else {
+      return evalExpr(falseExpr, env, store);
+    }
+  }],
+
+  [d.Block, ([exprs]) => {
+    // this feels hacky but it'd feel like a misuse of fold... *shrug*
+    // should I... special-case the last iteration
+    // ...nah
+    let retVal;
+    for(let expr of exprs) retVal = evalExpr(expr, env, store);
+    return retVal;
+  }],
+
+  /* Let Bindings */
+  [d.Let, ([[ident], e1, e2]) => {
+    let v1 = evalExpr(e1, env, store);
+    env.push(); // an alternative to immutable maps for scoping: a stack-map
+    env.set(ident, v1);
+    let v2;
+    try {
+      v2 = evalExpr(e2, env, store);
+    } finally {
+      env.pop();
+    }
+    return v2;
+  }],
+  [d.LetRec, ([[ident], func, e2]) => {
+    let [args, bodyExpr] = func;
+    let unwrappedArgs = args.map(([s]) => s);
+    let flattened = env.flatten(false); // get a snapshot of the scope stack
+    let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
+    flattened.set(ident, closure);
+
+    env.push();
+    env.set(ident, closure);
+    let v2;
+    try {
+      v2 = evalExpr(e2, env, store);
+    } finally {
+      env.pop();
+    }
+    return v2;
+  }],
+
+  /* Function Stuff */
+  [d.FunDef, ([args, bodyExpr]) => {
+    let unwrappedArgs = args.map(([s]) => s);
+    let flattened = env.flatten(false); // get a snapshot of the scope stack
+    return v.Closure(unwrappedArgs, bodyExpr, flattened);
+  }],
+  [d.FunCall, ([e1, argExprs]) => {
+    let [argIdents, funcBody, flattened] = v.valueToClosure(evalExpr(e1, env, store), e1);
+    if(argIdents.length != argExprs.length) {
+      throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
+    }
+    for(let i = 0; i < argIdents.length; i++) {
+      let argIdent = argIdents[i];
+      let argExpr = argExprs[i];
+      let argVal = evalExpr(argExpr, env, store);
+      flattened.set(argIdent, argVal); // should probably push here but tail calls
+    }
+    return evalExpr(funcBody, flattened, store);
+  }],
+
+  /* References */
+  [d.NewRef, ([e1]) => {
+    let v1 = evalExpr(e1, env, store);
+    return store.newref(v1);
+  }],
+  [d.DeRef, ([e1]) => {
+    let v1 = v.valueToReference(evalExpr(e1, env, store), e1);
+    return store.deref(v1);
+  }],
+  [d.AssignRef, ([e1, e2]) => {
+    let v1 = v.valueToReference(evalExpr(e1, env, store), e1);
+    let v2 = evalExpr(e2, env, store);
+    store.assign(v1, v2);
+    return v2;
+  }],
 ]);

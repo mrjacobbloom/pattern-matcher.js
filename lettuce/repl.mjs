@@ -1,6 +1,7 @@
 import nearley from 'nearley';
 import grammar from './grammar.mjs';
-import {evaluate, toJSValue} from './evaluate.mjs';
+import {setErrSource} from './errors.mjs';
+import {evaluate} from './evaluate.mjs';
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
@@ -22,9 +23,9 @@ rl.on('line', function(line){
     parser.feed(line);
     if(!parser.results.length) throw new Error('Program not parseable');
     let parsed = parser.results[0];
+    setErrSource(parsed)
     let evaluated = evaluate(parsed);
-    let jsValue = toJSValue(evaluated);
-    console.log(jsValue);
+    console.log(evaluated.toString());
     rl.prompt();
   } catch(e) {
     console.log(e.message);

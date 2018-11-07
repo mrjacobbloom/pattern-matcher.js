@@ -3,12 +3,12 @@ learning about pattern-matching interpreters in Scala. I wanted to see if there
 was any way to do something similar in JavaScript, or if it even makes sense to
 ask that, this is what I came up with.
 
-I've been updating it as we learned more kinds and uses of pattern matching. The
-code's getting prettier but it's still not that easy to read and it uses all
-kinds of Proxies and fakeout constructors to hack JavaScript syntax.
-
-Note: 10% of the hacking could probably be removed if I wasn't so attached to
-the `new` keyword. But I like `new` so
+The code's getting prettier but it's still got a ways to go before it'd be
+suitable for use in any kind of production environment. It usesa number of
+Proxies and fakeout constructors to hack JavaScript syntax. Some of the hacking
+could probably be removed if I wasn't so attached to the `new` keyword. But I
+think `new Term(...)` is prettier than `genTerm(...)` so that's what I went
+with.
 
 ## The files
 
@@ -18,37 +18,129 @@ the `new` keyword. But I like `new` so
 - `mython.mjs` is an implementation of a language we're doing in my class.
 - `lettuce/` is an entire implementation of another language we're doing in my
   class, including a parser using Nearley.
+  [Reference implementation](https://github.com/cuplv/lettuce-language)
 
 ## API
 
 ### `Term`
 
-The `Term` constructor returns a callable and represents a type.
+A `Term` represents a type, either terminal or nonterminal.
+
+#### `new Term(type: string[, argTypes: Array.<Term|Any>])`
+
+The `Term` constructor creates a type which can later be initialized. It takes 2
+arguments, the name of the type (for error logging) and (optionally) an array of
+types it takes as arguments. The types can either be other `Term`s, or anything
+else. For example, you might have a type that wraps native JS numbers or
+strings. You can also change the argument types later. Note that if you leave
+the second argument blank, it defaults to no arguments being valid.
+
+The returned `Term` object represents a type. It can be called like a function
+to return a `TermInstance`. Note that, in many places, the term iself can be
+used in place of a `TermInstance` if you want to save yourself a pair of
+parentheses.
 
 ```javascript
-import {Term, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
-/*
- * Term takes 2 arguments, the name of the type (for error logging) and
- * (optionally) an array of types it takes as arguments. You can also change
- * the argument types later.
- */
+import {Term} from './pattern-matcher.mjs';
 let myType = new Term('myType');
-myType.setArgTypes([myType]);
-let mySupertype = new Term('myType2').setAbstract(); // here have some risky chaining
-let mySubtype = new Term('mySubtype', [mySupertype]).extends(mySupertype);
+let myTermInstance = myType();
 ```
+
+#### `myTerm(...args): TermInstance`
+
+When you call a `Term` object as a function, it returns a `TermInstance`, which
+is an array-like structure that stores the arguments passed.
+
+#### `myTerm.setArgTypes(argTypes: Array.<Term|Any>): Term`
+
+Set the list of argument types accepted by the term. Allows for recursion I
+guess. The types can either be other `Term`s, or anything else. For example, you
+might have a type that wraps native JS numbers or strings.
+
+Returns the Term so it can be riskily chained with the constructor.
+
+#### `myTerm.setAbstract(isAbstract: boolean = true): Term`
+
+Set the term abstract. This means it can be subclassed but cannot itself be
+instantiated:
+
+```javascript
+let myType = new Term('myType');
+myType(); // TermInstance
+
+let myType2 = new Term('myType2').setAbstract();
+myType2(); // throws
+myType2.setAbstract(false); // I guess you could do this?
+myType2(); // TermInstance
+```
+
+Returns the Term so it can be riskily chained with the constructor.
+
+#### `myTerm.extends(supertype: Term): Term`
+
+Sets the term as a subtype of the given supertype.
+
+```javascript
+let mySupertype = new Term('mySupertype').setAbstract();
+let sub1 = new Term('sub1', [mySupertype]).extends(mySupertype);
+let sub2 = new Term('sub2', []).extends(mySupertype);
+
+sub1(sub1(sub2)); // checks out
+```
+
+Returns the Term so it can be riskily chained with the constructor.
+
+#### @TODO: properties n stuff
+
+### `TermInstance`
+
+A `TermInstance` is the value returned when you call a `Term` as a function. It
+stores the set of arguments passed to it and is array-like which makes it easily destructurable in a `PatternMatcher`.
+
+```javascript
+let myType = new Term('myType');
+let myTermInstance = myType();
+```
+
+#### `myTermInstance.setLoc(start: TermInstance|MooToken[, end: TermInstance|MooToken]): TermInstance`
+
+In order to keep track of how terms relate to their source text, `TermInstance`s
+have a function `setLoc()` which accepts first and last tokens as either:
+
+- [moo](https://github.com/no-context/moo) token objects (as in, it expects the
+  properties `line`, `col`, and `text`)
+- other `TermInstance`s
+
+This would ideally be set while parsing and can be used later when throwing
+errors and things.
+
+```ebnf
+# this is Nearley syntax but should apply to anything
+FooBar -> "foo" %identifier "bar" {% t => FooBar(t[1]).setLoc(t[0], t[2]) %}
+```
+
+Returns the TermInstance so it can be riskily chained during instantiation.
+
+#### `myTermInstance.loc: [[number, number], [number, number]]`
+
+Represents the location of the term insource text.
+Has the form `[[start_line, start_column], [end_line, end_column]]`. Note that
+moo line and column numbers are 1-indexed.
+
+#### @TODO: properties n stuff, esp if these merge w/ Pattern
 
 ### `PatternMatcher`
 
 The `PatternMatcher` constructor takes an array of 2-item arrays of patterns to
-match and functions to call in those cases. The functions are passed the term,
-which is Array-like and easily destructurable:
+match and functions to call in those cases. The functions are passed the matching
+`TermInstance`, which is Array-like and easily destructurable:
 
 ```javascript
+import {Term, PatternMatcher} from './pattern-matcher.mjs';
+
 let NumList = new Term('NumList').setAbstract();
 let Nil = new Term('Nil').extends(NumList);
 let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
-// That's right, it can take native/non-Term types
 
 let isZigZag = new PatternMatcher([
   [Nil, () => {
@@ -137,6 +229,8 @@ insert(mytree, {n:5});
 // Node(10, Node(8, Node(5, Leaf, Leaf), Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)))
 ```
 
+@TODO: explore casting to Number, String, etc and maybe it'll mostly work?
+
 ### `Types`
 
 `Types` is an object containing a few things:
@@ -146,8 +240,8 @@ insert(mytree, {n:5});
   `PatternMatcher` function as well.
 - `Types.any` - Object representing any type. You'll probably want to use a
   supertype instead.
-- `Types.list(type, min=0, max=Infinity)` - Put
-  this in any list of argument types, it means expect an array of that type
+- `Types.list(type, min=0, max=Infinity)` - Put this in any list of argument
+  types or in a pattern to match against, it means expect an array of that type
   of size min-max (inclusive)
 - `Types.or(type1, type2...)` (not implemented yet, use a supertype instead)
 
@@ -155,11 +249,12 @@ insert(mytree, {n:5});
 
 `ScopedMap` is a Map-like object that allows you to push and pop scopes.
 
+@todo: break this out into its own file and document it better
+
 ### Ergonomics aliases
 
 - `_` - alias for `Types.any` for convenience in writing types
-- `term.list` & `Types.any.list` - aliases for `Types.list(term)`
-
+- `term.list` & `Types.any.list` (or `_.list`) - aliases for `Types.list(term)`
 
 ## Run it
 
@@ -168,4 +263,11 @@ to use a flag to get it to run under Node (version 10+):
 
 ```bash
 node --experimental-modules driver.mjs
+```
+
+To run the lettuce repl:
+
+```bash
+cd lettuce
+npm run-script repl
 ```

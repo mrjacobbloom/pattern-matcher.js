@@ -1,0 +1,35 @@
+<html>
+<head>
+  <link rel="stylesheet" href="./playground.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.1/ace.js"></script>
+  <script src="./lib/raphael.js"></script>
+  <script src="./lib/Treant.js"></script>
+  <link rel="stylesheet" href="./lib/Treant.css"/>
+  <script src="./playground.js" type="module"></script>
+</head>
+<body>
+  <div id="toolbar"><h1>Lettuce Playground</h1></div>
+  <div id="main">
+    <div id="col-1" class="col">
+      <h2>Lettuce Input</h2>
+      <div class="col-content">
+        <div id="editor">let x = 2 in
+    let y = function(z) 2*z in
+        y(x)</div>
+      </div>
+    </div>
+    <div id="col-2" class="col">
+        <h2>Abstract Syntax Tree</h2>
+        <div class="col-content">
+          <div id="rendered-tree"></div>
+        </div>
+    </div>
+    <div id="col-3" class="col">
+      <h2>Output</h2>
+      <div class="col-content">
+          <pre id="results"></pre>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
