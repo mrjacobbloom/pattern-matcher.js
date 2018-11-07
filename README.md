@@ -18,7 +18,8 @@ with.
 - `mython.mjs` is an implementation of a language we're doing in my class.
 - `lettuce/` is an entire implementation of another language we're doing in my
   class, including a parser using Nearley.
-  [Reference implementation](https://github.com/cuplv/lettuce-language)
+  - [Online playground](https://mrjacobbloom.github.io/pattern-matcher.js/lettuce/playground/index.html)
+  - [Reference implementation](https://github.com/cuplv/lettuce-language)
 
 ## API
 
