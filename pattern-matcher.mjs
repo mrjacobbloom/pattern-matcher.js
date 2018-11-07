@@ -27,8 +27,10 @@ class TermInstance extends Array {
         } else {
           if(typeof cls == 'function') {
             return cls.name;
+          } else if(Array.isArray(arg)) {
+            return '[' + arg.join(', ') + ']';
           } else {
-            return arg;
+            return String(arg)
           }
         }
       });
@@ -49,11 +51,13 @@ class TermInstance extends Array {
 
     if(end) {
       if(end.loc) {
-        [endline, endcol] = end.loc[1]
+        [endline, endcol] = end.loc[1];
       } else if(end.text) {
         endline = end.line;
         endcol = end.col + end.text.length;
       }
+    } else if(start.loc) {
+      [endline, endcol] = start.loc[1];
     } else if(start.text) {
       endline = startline;
       endcol = startcol + start.text.length;

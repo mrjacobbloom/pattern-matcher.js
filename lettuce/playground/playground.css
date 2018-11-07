@@ -38,20 +38,22 @@ body {
   flex-grow: 1;
   position: relative;
   max-width: calc(100vw / 3); /* flaexbox fails me */
+  overflow: scroll;
 }
 
-.col-content > * {
+/*.col-content > * {
   width: 100%;
   overflow: scroll;
   position: relative;
   height: 100%;
-}
+}*/
 
 #results {
   padding: 5px;
 }
 
 .rendered-tree-node {
+  font-size: 10pt;
   background: lightblue;
   border: 1px solid teal;;
   border-radius: 5px;

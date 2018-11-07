@@ -17,9 +17,11 @@ let astToNodeTree = ast => {
     // it's an array
     children = ast.map(a => astToNodeTree(a));
     name = '[list]';
-    let [start] = ast[0].loc;
-    let [,end] = ast[ast.length - 1].loc;
-    loc = [start, end];
+    if(ast.length) {
+      let [start] = ast[0].loc;
+      let [,end] = ast[ast.length - 1].loc;
+      loc = [start, end];
+    }
   } else {
     name = ast.toString();
   }
