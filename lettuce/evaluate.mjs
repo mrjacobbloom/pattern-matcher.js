@@ -1,15 +1,23 @@
-import {PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
+import {Term, PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
 import {LettuceStore} from './store.mjs'
 import * as err from './errors.mjs';
 import * as d from './definitions.mjs';
 import * as v from './values.mjs';
+
+let ValueTuple = new Term('ValueTuple', [v.Value, v.Value, d.Eq]);
+
+
+let START_TIME = Symbol('START_TIME');
+let MAX_TIME = 2000;
+
 
 export let evaluate = function(program) {
    // an alternative to immutable maps for scoping: a stack-map
   let env = new ScopedMap(undefined, false, true);
   let store = new LettuceStore();
   let [expr] = program;
-  return evalExpr(expr, env, store);
+  store[START_TIME] = Date.now(); // not what store
+  return _evalExpr(expr, env, store);
 };
 
 /**
@@ -28,7 +36,14 @@ let unwrap = (exprs, env, store, unwrapFunc, callback) => {
   return callback(...vs);
 };
 
-let evalExpr = new PatternMatcher((env, store) => [
+let evalExpr = (term, env, store) => {
+  if(Date.now() > store[START_TIME] + MAX_TIME) {
+    throw new err.LettuceRuntimeError('Execution timed out');
+  }
+  return _evalExpr(term, env, store);
+};
+
+let _evalExpr = new PatternMatcher((env, store) => [
   [d.ConstNum, ([n]) => v.NumValue(n)],
   [d.ConstBool, ([b]) => v.BoolValue(b)],
   [d.Ident, term => {
@@ -65,12 +80,14 @@ let evalExpr = new PatternMatcher((env, store) => [
   ],
 
   /* Comparison Operators */
-  [d.Eq, term =>
-    // The reference implementation throws if you compare anything but NumValues
-    // I think you should be able to Eq compare any values of the same type
-    // but we can add that some other time cuz it's kinda a lotta work
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 === v2))
-  ],
+  [d.Eq, term => {
+    // differs from the reference implementation in that it will compare any
+    // values and only throws if the types are different
+    let [e1, e2] = term;
+    let v1 = evalExpr(e1, env, store);
+    let v2 = evalExpr(e2, env, store);
+    return handleEq(ValueTuple(v1, v2, term));
+  }],
   [d.Neq, term =>
     unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 != v2))
   ],
@@ -113,18 +130,6 @@ let evalExpr = new PatternMatcher((env, store) => [
   }],
 
   /* Let Bindings */
-  [d.Let, ([[ident], e1, e2]) => {
-    let v1 = evalExpr(e1, env, store);
-    env.push(); // an alternative to immutable maps for scoping: a stack-map
-    env.set(ident, v1);
-    let v2;
-    try {
-      v2 = evalExpr(e2, env, store);
-    } finally {
-      env.pop();
-    }
-    return v2;
-  }],
   [d.LetRec, ([[ident], func, e2]) => {
     let [args, bodyExpr] = func;
     let unwrappedArgs = args.map(([s]) => s);
@@ -134,6 +139,36 @@ let evalExpr = new PatternMatcher((env, store) => [
 
     env.push();
     env.set(ident, closure);
+    let v2;
+    try {
+      v2 = evalExpr(e2, env, store);
+    } finally {
+      env.pop();
+    }
+    return v2;
+  }],
+  // if let passed a fundef, do same thing as letrec
+  [d.Let(_, d.FunDef, _), ([[ident], func, e2]) => {
+    let [args, bodyExpr] = func;
+    let unwrappedArgs = args.map(([s]) => s);
+    let flattened = env.flatten(false); // get a snapshot of the scope stack
+    let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
+    flattened.set(ident, closure);
+
+    env.push();
+    env.set(ident, closure);
+    let v2;
+    try {
+      v2 = evalExpr(e2, env, store);
+    } finally {
+      env.pop();
+    }
+    return v2;
+  }],
+  [d.Let, ([[ident], e1, e2]) => {
+    let v1 = evalExpr(e1, env, store);
+    env.push(); // an alternative to immutable maps for scoping: a stack-map
+    env.set(ident, v1);
     let v2;
     try {
       v2 = evalExpr(e2, env, store);
@@ -161,13 +196,14 @@ let evalExpr = new PatternMatcher((env, store) => [
     if(argIdents.length != argExprs.length) {
       throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
     }
+    let flattenedAndBound = flattened.flatten(false);
     for(let i = 0; i < argIdents.length; i++) {
       let argIdent = argIdents[i];
       let argExpr = argExprs[i];
       let argVal = evalExpr(argExpr, env, store);
-      flattened.set(argIdent, argVal); // should probably push here but tail calls
+      flattenedAndBound.set(argIdent, argVal); // should probably push here but tail calls
     }
-    return evalExpr(funcBody, flattened, store);
+    return evalExpr(funcBody, flattenedAndBound, store);
   }],
 
   /* References */
@@ -185,4 +221,30 @@ let evalExpr = new PatternMatcher((env, store) => [
     store.assign(v1, v2);
     return v2;
   }],
+]);
+
+let handleEq = new PatternMatcher([
+  [ValueTuple(v.NumValue, v.NumValue, d.Eq), ([v1, v2, term]) => {
+    let n1 = v.valueToNum(v1, term);
+    let n2 = v.valueToNum(v2, term);
+    return v.BoolValue(n1 === n2);
+  }],
+  [ValueTuple(v.BoolValue, v.BoolValue, d.Eq), ([v1, v2, term]) => {
+    let b1 = v.valueToBool(v1, term);
+    let b2 = v.valueToBool(v2, term);
+    return v.BoolValue(b1 === b2);
+  }],
+  [ValueTuple(v.Closure, v.Closure, d.Eq), ([v1, v2, term]) => {
+    let c1 = v.valueToClosure(v1, term);
+    let c2 = v.valueToClosure(v2, term);
+    return v.BoolValue(c1[0].toString() === c2[0].toString() && c1[1] === c2[1]);
+  }],
+  [ValueTuple(v.Reference, v.Reference, d.Eq), ([v1, v2, term]) => {
+    let r1 = v.valueToReference(v1, term);
+    let r2 = v.valueToReference(v2, term);
+    return v.BoolValue(r1 === r2);
+  }],
+  [ValueTuple, ([v1, v2, term]) => {
+    throw new err.LettuceRuntimeError('Comparison of unlike types', term);
+  }]
 ]);

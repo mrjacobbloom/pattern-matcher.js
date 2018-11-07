@@ -25,6 +25,10 @@ let sourceUpdated = () => {
   let parsed;
   try {
     results.textContent = '';
+    if(!data.length) {
+      renderTree(null, highlightRange);
+      return;
+    }
     parser.feed(data);
     if(!parser.results.length) {
       throw 'Parse error';
@@ -41,7 +45,12 @@ let sourceUpdated = () => {
   }
 };
 
+let initProgram = `letrec fib = function(x)
+    if x <= 1 then 1 else (fib(x-1) + fib(x-2))
+    in fib(6)`;
+
 window.addEventListener('load', () => {
+  document.querySelector('#editor').textContent = initProgram;
   editor = ace.edit('editor');
   results = document.querySelector('#results');
   editor.session.on('change', sourceUpdated);

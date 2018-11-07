@@ -4,7 +4,7 @@ was any way to do something similar in JavaScript, or if it even makes sense to
 ask that, this is what I came up with.
 
 The code's getting prettier but it's still got a ways to go before it'd be
-suitable for use in any kind of production environment. It usesa number of
+suitable for use in any kind of production environment. It uses a number of
 Proxies and fakeout constructors to hack JavaScript syntax. Some of the hacking
 could probably be removed if I wasn't so attached to the `new` keyword. But I
 think `new Term(...)` is prettier than `genTerm(...)` so that's what I went

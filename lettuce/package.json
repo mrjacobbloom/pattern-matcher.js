@@ -8,7 +8,6 @@
   },
   "scripts": {
     "compile": "nearleyc grammar.ne -o grammar.mjs",
-    "run": "npm run-script compile && node --experimental-modules driver.mjs",
     "repl": "npm run-script compile && node --experimental-modules repl.mjs",
     "test": "npm run-script compile && node --experimental-modules test/test.mjs"
   },

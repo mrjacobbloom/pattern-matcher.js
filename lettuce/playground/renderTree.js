@@ -36,7 +36,7 @@ export default function(ast, callback) {
     chart: {
       container: '#rendered-tree'
     },
-    nodeStructure: astToNodeTree(ast)
+    nodeStructure: ast ? astToNodeTree(ast) : []
   };
   let chart = new Treant(config, tree => {
     tree.drawArea.addEventListener('mouseover', e => {
