@@ -33,7 +33,7 @@ let evalExpr = new PatternMatcher((env, store) => [
   [d.ConstBool, ([b]) => v.BoolValue(b)],
   [d.Ident, term => {
     let [s] = term;
-    if(!env.has(s)) throw new err.LettuceRuntimeError(`${s} is not defined`, term);
+    if(!env.has(s)) throw new err.LettuceRuntimeError(`Variable "${s}" is not defined`, term);
     return env.get(s)
   }],
 
