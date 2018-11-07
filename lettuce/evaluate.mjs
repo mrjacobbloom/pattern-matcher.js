@@ -145,7 +145,14 @@ let evalExpr = new PatternMatcher((env, store) => [
 
   /* Function Stuff */
   [d.FunDef, ([args, bodyExpr]) => {
-    let unwrappedArgs = args.map(([s]) => s);
+    let unwrappedArgs = [];
+    for(let arg of args) {
+      let [ident] = arg;
+      if(unwrappedArgs.includes(ident)) {
+        throw new err.LettuceRuntimeError(`Illegal duplicate argument name "${ident}"`, arg);
+      }
+      unwrappedArgs.push(ident);
+    }
     let flattened = env.flatten(false); // get a snapshot of the scope stack
     return v.Closure(unwrappedArgs, bodyExpr, flattened);
   }],

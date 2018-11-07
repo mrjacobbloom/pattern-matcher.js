@@ -1,7 +1,10 @@
 let source = '';
 export let setErrSource = s => {source = s};
 
-let caratLine = (line, col) => {
+const beforeLen = 15;
+const afterLen = 5;
+
+let caretLine = (line, col) => {
   if(!line) return '';
   if(line.loc) { // someone passed us a TermInstance, what a goofus
     let [l, c] = line.loc[0]
@@ -9,13 +12,15 @@ let caratLine = (line, col) => {
     col = c;
   }
   let sourceline = source.split('\n')[line - 1];
-  let trimmed = sourceline.substring(Math.max(0, col - 5), col + 5);
-  return `\nAt ${line}:${col}:\n${trimmed}\n${' '.repeat(Math.min(4, col - 1))}^`;
+  let at = `At ${line}:${col}: `;
+  let trimmed = sourceline.substring(Math.max(0, col - beforeLen), col + afterLen);
+  let caret = ' '.repeat(at.length + Math.min(beforeLen - 1, col - 1)) + '^'
+  return `\n${at}${trimmed}\n${caret}`;
 }
 
 class LettuceError {
   constructor(message, term) {
-    this.message = message + caratLine(term);
+    this.message = message + caretLine(term);
   }
   toString() {
     return `${this.constructor.name}: ${this.message}`
