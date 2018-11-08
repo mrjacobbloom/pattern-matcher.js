@@ -45,12 +45,8 @@ let parseLetRec = ([[ident], func, e2], env, store) => {
 
   env.push();
   env.set(ident, closure);
-  let v2;
-  try {
-    v2 = evalExpr(e2, env, store);
-  } finally {
-    env.pop();
-  }
+  let v2 = evalExpr(e2, env, store);
+  env.pop();
   return v2;
 };
 
@@ -154,12 +150,8 @@ let _evalExpr = new PatternMatcher((env, store) => [
     let v1 = evalExpr(e1, env, store);
     env.push(); // an alternative to immutable maps for scoping: a stack-map
     env.set(ident, v1);
-    let v2;
-    try {
-      v2 = evalExpr(e2, env, store);
-    } finally {
-      env.pop();
-    }
+    let v2 = evalExpr(e2, env, store);
+    env.pop();
     return v2;
   }],
 
