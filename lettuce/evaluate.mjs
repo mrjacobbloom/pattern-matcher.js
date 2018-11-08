@@ -36,6 +36,24 @@ let unwrap = (exprs, env, store, unwrapFunc, callback) => {
   return callback(...vs);
 };
 
+let parseLetRec = ([[ident], func, e2], env, store) => {
+  let [args, bodyExpr] = func;
+  let unwrappedArgs = args.map(([s]) => s);
+  let flattened = env.flatten(false); // get a snapshot of the scope stack
+  let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
+  flattened.set(ident, closure);
+
+  env.push();
+  env.set(ident, closure);
+  let v2;
+  try {
+    v2 = evalExpr(e2, env, store);
+  } finally {
+    env.pop();
+  }
+  return v2;
+};
+
 let evalExpr = (term, env, store) => {
   if(Date.now() > store[START_TIME] + MAX_TIME) {
     throw new err.LettuceRuntimeError('Execution timed out');
@@ -130,41 +148,8 @@ let _evalExpr = new PatternMatcher((env, store) => [
   }],
 
   /* Let Bindings */
-  [d.LetRec, ([[ident], func, e2]) => {
-    let [args, bodyExpr] = func;
-    let unwrappedArgs = args.map(([s]) => s);
-    let flattened = env.flatten(false); // get a snapshot of the scope stack
-    let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
-    flattened.set(ident, closure);
-
-    env.push();
-    env.set(ident, closure);
-    let v2;
-    try {
-      v2 = evalExpr(e2, env, store);
-    } finally {
-      env.pop();
-    }
-    return v2;
-  }],
-  // if let passed a fundef, do same thing as letrec
-  [d.Let(_, d.FunDef, _), ([[ident], func, e2]) => {
-    let [args, bodyExpr] = func;
-    let unwrappedArgs = args.map(([s]) => s);
-    let flattened = env.flatten(false); // get a snapshot of the scope stack
-    let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
-    flattened.set(ident, closure);
-
-    env.push();
-    env.set(ident, closure);
-    let v2;
-    try {
-      v2 = evalExpr(e2, env, store);
-    } finally {
-      env.pop();
-    }
-    return v2;
-  }],
+  [d.LetRec, term => parseLetRec(term, env, store)],
+  [d.Let(_, d.FunDef, _), term => parseLetRec(term, env, store)], // if let passed a fundef, do same thing as letrec
   [d.Let, ([[ident], e1, e2]) => {
     let v1 = evalExpr(e1, env, store);
     env.push(); // an alternative to immutable maps for scoping: a stack-map
@@ -196,7 +181,7 @@ let _evalExpr = new PatternMatcher((env, store) => [
     if(argIdents.length != argExprs.length) {
       throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
     }
-    let flattenedAndBound = flattened.flatten(false);
+    let flattenedAndBound = flattened.flatten(false); // create a copy of the static scope (for recursion)
     for(let i = 0; i < argIdents.length; i++) {
       let argIdent = argIdents[i];
       let argExpr = argExprs[i];

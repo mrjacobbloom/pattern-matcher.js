@@ -79,7 +79,7 @@ let ParserRules = [
     {"name": "level_6", "symbols": [{"literal":"sin"}, "_o", "level_6"], "postprocess": t => d.Sine(t[2]).setLoc(t[0], t[2])},
     {"name": "level_6", "symbols": [{"literal":"cos"}, "_o", "level_6"], "postprocess": t => d.Cosine(t[2]).setLoc(t[0], t[2])},
     {"name": "level_6", "symbols": ["level_7"], "postprocess": id},
-    {"name": "level_7", "symbols": [{"literal":"("}, "_o", "level_1", "_o", {"literal":")"}], "postprocess": t => t[2]},
+    {"name": "level_7", "symbols": [{"literal":"("}, "_o", "level_1", "_o", {"literal":")"}], "postprocess": t => t[2].setLoc(t[0], t[4])},
     {"name": "level_7", "symbols": ["Ident"], "postprocess": id},
     {"name": "level_7", "symbols": ["FunCall"], "postprocess": id},
     {"name": "level_7", "symbols": ["ConstNum"], "postprocess": id},

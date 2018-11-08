@@ -50,6 +50,7 @@ body {
 
 #results {
   padding: 5px;
+  margin: 0;
 }
 
 .rendered-tree-node {

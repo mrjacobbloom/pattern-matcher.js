@@ -40,7 +40,7 @@ let sourceUpdated = () => {
     let evaluated = evaluate(parsed);
     results.textContent = evaluated.toString();
   } catch(e) {
-    console.log(parsed)
+    console.log(parsed);
     results.textContent = e.stack || e;
   }
 };

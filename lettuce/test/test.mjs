@@ -157,7 +157,7 @@ else
 in
 let oneoverx = function(x) 1.0/x in
 trap(oneoverx, 1.0, 2.0, 0.05, 0.0)`,
-(ast, result, err) => 0.693 <= result[0] && result[0] <= -0.6935
+(ast, result, err) => 0.693 <= result[0] && result[0] <= 0.6935
 );
 
 test('interpreter', 'Equation solving using newton raphson',

@@ -93,7 +93,7 @@ level_6 -> # unary arithmetic ops
 | "cos" _o level_6                  {% t => d.Cosine(t[2]).setLoc(t[0], t[2]) %}
 | level_7                           {% id %}
 level_7 ->
-  "(" _o level_1 _o ")"             {% t => t[2] %}
+  "(" _o level_1 _o ")"             {% t => t[2].setLoc(t[0], t[4]) %}
 | Ident                             {% id %}
 | FunCall                           {% id %}
 | ConstNum                          {% id %}
