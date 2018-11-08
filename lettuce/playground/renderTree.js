@@ -38,13 +38,7 @@ export default function(ast, callback) {
     },
     nodeStructure: ast ? astToNodeTree(ast) : []
   };
-  let chart = new Treant(config, tree => {
-    tree.drawArea.addEventListener('mouseover', e => {
-      if(e.target.hasAttribute('data-loc')) {
-        let callback2 = callback(JSON.parse(e.target.getAttribute('data-loc')))
-        e.target.addEventListener('mouseout', callback2, {once: true})
-      }
-    });
+  let chart = new Treant(config, () => {
     requestAnimationFrame(() => {
       // I believe this is a misuse of rAF but whatevs
       let c = document.querySelector('#rendered-tree');

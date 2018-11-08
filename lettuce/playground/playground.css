@@ -4,11 +4,9 @@ body {
   flex-direction: column;
   margin: 0;
 }
-#toolbar {
+h1 {
   background: #ddd;
   padding: 5px;
-}
-#toolbar h1 {
   font-weight: 100;
   text-align: center;
   margin: 0;
@@ -48,20 +46,44 @@ body {
   height: 100%;
 }*/
 
-#results {
-  padding: 5px;
-  margin: 0;
-}
 
 .rendered-tree-node {
   font-size: 10pt;
   background: lightblue;
-  border: 1px solid teal;;
+  border: 1px solid teal;
   border-radius: 5px;
   padding: 2px;
+  cursor: default;
   transition: transform .2s;
   transform: scale(1);
 }
 .rendered-tree-node:hover {
   transform: scale(1.1);
+}
+
+#toolbar {
+  background: rgba(0, 0, 0, 0.07);
+  padding: 5px;
+  display: flex;
+  justify-content: center;
+}
+
+#toolbar button {
+  width: 50px;
+  height: 50px;
+  margin: 0 2.5px;
+  appearance: none;
+  background: white;
+  border: 1px solid #bbb;
+  text-align: center;
+  transition: transform .2s;
+  transform: scale(1);
+}
+#toolbar button:hover {
+  transform: scale(1.1);
+}
+
+#results {
+  padding: 5px;
+  margin: 0;
 }
