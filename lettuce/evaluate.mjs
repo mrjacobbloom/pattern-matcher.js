@@ -16,7 +16,7 @@ export let evaluate = function(program) {
   let env = new ScopedMap(undefined, false, true);
   let store = new LettuceStore();
   let [expr] = program;
-  store[START_TIME] = Date.now(); // not what store
+  store[START_TIME] = Date.now(); // not what store is designed for but whatevs
   return _evalExpr(expr, env, store);
 };
 
