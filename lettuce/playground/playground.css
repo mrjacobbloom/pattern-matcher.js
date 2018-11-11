@@ -79,7 +79,10 @@ h1 {
   transition: transform .2s;
   transform: scale(1);
 }
-#toolbar button:hover {
+#toolbar button:disabled {
+  background: #bbb;
+}
+#toolbar button:not(:disabled):hover {
   transform: scale(1.1);
 }
 
