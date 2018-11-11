@@ -3,6 +3,7 @@ import grammar from '../grammar.mjs';
 import {evaluate} from '../evaluate.mjs';
 import renderTree from './renderTree.js';
 import {setErrSource} from '../errors.mjs';
+import {lettuceHighlightMode} from './lettuceHighlightMode.js'
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
@@ -60,6 +61,7 @@ window.addEventListener('load', () => {
   document.querySelector('#editor').textContent = initProgram;
   editor = ace.edit('editor');
   editor.session.on('change', sourceUpdated);
+  editor.session.setMode(lettuceHighlightMode);
 
   // initialize parse tree and stuff
   let tree = document.querySelector('#rendered-tree');
