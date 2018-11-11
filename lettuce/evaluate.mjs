@@ -214,7 +214,7 @@ let handleEq = new PatternMatcher([
   [ValueTuple(v.Closure, v.Closure, d.Eq), ([v1, v2, term]) => {
     let c1 = v.valueToClosure(v1, term);
     let c2 = v.valueToClosure(v2, term);
-    return v.BoolValue(c1[0].toString() === c2[0].toString() && c1[1] === c2[1]);
+    return v.BoolValue(c1 == c2);
   }],
   [ValueTuple(v.Reference, v.Reference, d.Eq), ([v1, v2, term]) => {
     let r1 = v.valueToReference(v1, term);
