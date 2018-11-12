@@ -17,18 +17,32 @@ var rl = readline.createInterface({
 
 rl.prompt();
 
-rl.on('line', function(line){
+let cache = '';
+
+rl.on('line', function(line) {
+  let parser = new nearley.Parser(grammar2);
+  cache += '\n' + line;
   try {
-    let parser = new nearley.Parser(grammar2);
-    parser.feed(line);
-    if(!parser.results.length) throw new Error('Program not parseable');
-    let parsed = parser.results[0];
-    setErrSource(parsed)
+    parser.feed(cache);
+  } catch(e) {}
+  if(!parser.results.length) {
+    if(line) {
+      rl.prompt();
+      return;
+    } else {
+      throw 'Program not parseable';
+    }
+  }
+  let parsed = parser.results[0];
+  setErrSource(parsed);
+  try {
     let evaluated = evaluate(parsed);
     console.log(evaluated.toString());
+    cache = '';
     rl.prompt();
   } catch(e) {
-    console.log(e.message);
+    console.log(e.message || e);
+    cache = '';
     rl.prompt();
   }
 });
