@@ -16,12 +16,40 @@ with.
 - `driver.mjs` is a set of inductive implementations of various structures that
   mirror Scala code from my class
 - `mython.mjs` is an implementation of a language we're doing in my class.
-- `lettuce/` is an entire implementation of another language we're doing in my
-  class, including a parser using Nearley.
+- [`lettuce/`](https://github.com/mrjacobbloom/pattern-matcher.js/tree/master/lettuce)
+  is an entire implementation of another language we're doing in my class,
+  including a Nearley parser. It has its own readme because it's a whole other
+  thing.
   - [Online playground](https://mrjacobbloom.github.io/pattern-matcher.js/lettuce/playground/index.html)
   - [Reference implementation](https://github.com/cuplv/lettuce-language)
 
 ## API
+
+These API docs are written in a kind of pseudo-TypeScript that I hope y'all won't find too confusing. 😅
+
+- [`Term`](#term)
+  - [`new Term(type: string[, argTypes: Array.<Term|Any>])`](#new-termtype-string-argtypes-arraytermany)
+  - [`myTerm(...args): TermInstance`](#mytermargs-terminstance)
+  - [`myTerm.setArgTypes(argTypes: Array.<Term|Any>): Term`](#mytermsetargtypesargtypes-arraytermany-term)
+  - [`myTerm.setAbstract(isAbstract: boolean = true): Term`](#mytermsetabstractisabstract-boolean--true-term)
+  - [`myTerm.extends(supertype: Term): Term`](#mytermextendssupertype-term-term)
+  - [`myTerm.matches(pattern: Term|TermInstance|Any): boolean`](#mytermmatchespattern-termterminstanceany-boolean)
+  - [`myTerm.termName: string`](#mytermtermname-string)
+  - [`myTerm.list: Types.List`](#mytermlist-typeslist)
+- [`TermInstance`](#terminstance)
+  - [`myTermInstance.matches(pattern: Term|TermInstance|Any): boolean`](#myterminstancematchespattern-termterminstanceany-boolean)
+  - [`myTermInstance.setLoc(start: TermInstance|MooToken[, end: TermInstance|MooToken]): TermInstance`](#myterminstancesetlocstart-terminstancemootoken-end-terminstancemootoken-terminstance)
+  - [`myTermInstance.loc: [[number, number], [number, number]]`](#myterminstanceloc-number-number-number-number)
+  - [`myTermInstance.term: Term`](#myterminstanceterm-term)
+  - [`myTermInstance.termName: string`](#myterminstancetermname-string)
+- [`PatternMatcher`](#patternmatcher)
+- [`Types`](#types)
+  - [`Types.matches(pattern: TermInstance|Term|Any, input: Any) boolean`](#typesmatchespattern-terminstancetermany-input-any-boolean)
+  - [`Types.validate(termInstance): void`](#typesvalidateterminstance-void)
+  - [`Types.any` (alias: `_`)](#typesany-alias-_)
+  - [`Types.list(type: Term|TermInstace|Any , min=0, max=Infinity): Types.List` (alias: `myTerm.list`)](#typeslisttype-termterminstaceany--min0-maxinfinity-typeslist-alias-mytermlist)
+- [`ScopedMap`](#scopedmap)
+
 
 ### `Term`
 
