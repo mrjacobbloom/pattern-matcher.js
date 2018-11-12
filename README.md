@@ -63,16 +63,16 @@ Returns the Term so it can be riskily chained with the constructor.
 #### `myTerm.setAbstract(isAbstract: boolean = true): Term`
 
 Set the term abstract. This means it can be subclassed but cannot itself be
-instantiated:
+instantiated (it won't throw until it's validated, which happens later).
 
 ```javascript
 let myType = new Term('myType');
 myType(); // TermInstance
 
 let myType2 = new Term('myType2').setAbstract();
-myType2(); // throws
+Types.validate(myType2()); // throws
 myType2.setAbstract(false); // I guess you could do this?
-myType2(); // TermInstance
+Types.validate(myType2()); // TermInstance
 ```
 
 Returns the Term so it can be riskily chained with the constructor.
@@ -91,7 +91,14 @@ sub1(sub1(sub2)); // checks out
 
 Returns the Term so it can be riskily chained with the constructor.
 
-#### @TODO: properties n stuff
+#### `myTerm.matches(pattern: Term|TermInstance|Any): boolean`
+
+Returns whether myTerm matches the given pattern.
+
+#### `myTerm.list`
+
+Gives `Types.list(myTerm)` -- which means the pattern expects an array of
+`myTerm`s (see `Types.list` below).
 
 ### `TermInstance`
 
@@ -102,6 +109,10 @@ stores the set of arguments passed to it and is array-like which makes it easily
 let myType = new Term('myType');
 let myTermInstance = myType();
 ```
+
+#### `myTermInstance.matches(pattern: Term|TermInstance|Any): boolean`
+
+Returns whether myTermInstance matches the given pattern.
 
 #### `myTermInstance.setLoc(start: TermInstance|MooToken[, end: TermInstance|MooToken]): TermInstance`
 
@@ -234,28 +245,38 @@ insert(mytree, {n:5});
 
 ### `Types`
 
-`Types` is an object containing a few things:
+`Types` is an object containing a few things that help with types.
 
-- `Types.validate(term)` - make sure all the arguments' types line up with
-  the Term's expected types. This is automatically called at the start of every
-  `PatternMatcher` function as well.
-- `Types.any` - Object representing any type. You'll probably want to use a
-  supertype instead.
-- `Types.list(type, min=0, max=Infinity)` - Put this in any list of argument
-  types or in a pattern to match against, it means expect an array of that type
-  of size min-max (inclusive)
-- `Types.or(type1, type2...)` (not implemented yet, use a supertype instead)
+#### `Types.matches(pattern: TermInstance|Term|Any, input: Any) boolean`
+
+Returns whether the two things match (in type, not necessarily in value). The
+left side is the pattern/expected value and the right term is the input/actual
+value.
+
+#### `Types.validate(termInstance): void`
+
+Make sure all the arguments' types line up with the Term's expected types. 
+Doesn't return anything, but throws if types ton't line up with what's expected.
+This is automatically called at the start of every `PatternMatcher` call.
+
+#### `Types.any` (alias: `_`)
+
+Object representing any type. You'll probably want to use a supertype instead.
+You can also do `Types.any.list` (or `_.list`) as an alias for
+`Types.list(Types.any)`.
+
+#### `Types.list(type: Term|TermInstace|Any , min=0, max=Infinity): Types.List` (alias: `myTerm.list`)
+
+Put this in any list of argument types or in a pattern to match against, it
+means "expect an array of `type`s of size `min`-`max` (inclusive)".
+
+You can also use the shortcut `myTerm.list`.
 
 ### `ScopedMap`
 
 `ScopedMap` is a Map-like object that allows you to push and pop scopes.
 
 @todo: break this out into its own file and document it better
-
-### Ergonomics aliases
-
-- `_` - alias for `Types.any` for convenience in writing types
-- `term.list` & `Types.any.list` (or `_.list`) - aliases for `Types.list(term)`
 
 ## Run it
 

@@ -2,9 +2,9 @@ const emptyloc = [[-1, -1], [-1, -1]];
 const emptyarr = [];
 let astToNodeTree = ast => {
   let children = emptyarr, loc = emptyloc, name;
-  if(ast._type) {
+  if(ast.term) {
     loc = ast.loc;
-    name = ast._type;
+    name = ast.termName;
     if(ast[Symbol.iterator]) {
       if(ast.length == 1 && ["string", "number", "boolean"].includes(typeof ast[0])) {
         // special case for wrappers of JS values
