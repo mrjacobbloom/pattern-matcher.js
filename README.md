@@ -95,9 +95,14 @@ Returns the Term so it can be riskily chained with the constructor.
 
 Returns whether myTerm matches the given pattern.
 
-#### `myTerm.list`
+#### `myTerm.termName: string`
 
-Gives `Types.list(myTerm)` -- which means the pattern expects an array of
+The string representation of the term name given in the constructor. Used for
+error logging and such.
+
+#### `myTerm.list: Types.List`
+
+Alias for `Types.list(myTerm)` -- which means the pattern expects an array of
 `myTerm`s (see `Types.list` below).
 
 ### `TermInstance`
@@ -139,7 +144,14 @@ Represents the location of the term insource text.
 Has the form `[[start_line, start_column], [end_line, end_column]]`. Note that
 moo line and column numbers are 1-indexed.
 
-#### @TODO: properties n stuff, esp if these merge w/ Pattern
+#### `myTermInstance.term: Term`
+
+The `Term` of which the `TermInstance` is an instance.
+
+#### `myTermInstance.termName: string`
+
+The string representation of the term name given in the `Term`'s constructor.
+Used for error logging and such.
 
 ### `PatternMatcher`
 
