@@ -7,17 +7,59 @@ import * as v from './values.mjs';
 let ValueTuple = new Term('ValueTuple', [v.Value, v.Value, d.Eq]);
 
 
-let START_TIME = Symbol('START_TIME');
+let GLOBALS = Symbol('GLOBALS');
 let MAX_TIME = 2000;
 
 
-export let evaluate = function(program) {
+export let evaluate = function(program, callback) {
    // an alternative to immutable maps for scoping: a stack-map
   let env = new ScopedMap(undefined, false, true);
   let store = new LettuceStore();
   let [expr] = program;
-  store[START_TIME] = Date.now(); // not what store is designed for but whatevs
-  return _evalExpr(expr, env, store);
+  store[GLOBALS] = { // not what store is designed for but whatevs
+    startTime: Date.now(),
+    canTimeout: true
+  }
+  trampoline(evalExpr(expr, env, store, callback));
+};
+
+let trampoline = ([term, result]) => {
+  while(typeof result == 'function') [term, result] = result();
+  return result;
+};
+
+export let stepThrough = function(program, callback) {
+  let env = new ScopedMap(undefined, false, true);
+  let store = new LettuceStore();
+  let [expr] = program;
+  store[GLOBALS] = { // not what store is designed for but whatevs
+    startTime: null,
+    canTimeout: false
+  }
+  let term, result = () => evalExpr(expr, env, store, callback);
+  return () => {
+    if(typeof result == 'function') {
+      [term, result] = result();
+      return [term, result];
+    } else {
+      return [null, null];
+    }
+  };
+}
+
+let cps_map = (list, mapfunc, callback) => {
+  let outlist = new Array(list.length);
+  let _map = (index) => {
+    if(index < list.length) {
+      return mapfunc(list[index], v => {
+        outlist[index] = v;
+        return _map(index + 1);
+      });
+    } else {
+      return callback(outlist);
+    }
+  }
+  return _map(0);
 };
 
 /**
@@ -32,11 +74,13 @@ export let evaluate = function(program) {
  * @returns {*} Return value of callback
  */
 let unwrap = (exprs, env, store, unwrapFunc, callback) => {
-  let vs = exprs.map(expr => unwrapFunc(evalExpr(expr, env, store), expr));
-  return callback(...vs);
+  return cps_map(exprs, (expr, cb) => evalExpr(expr, env, store, cb), vs => {
+    let us = vs.map(v => unwrapFunc(v, exprs))
+    return callback(...us);
+  });
 };
 
-let parseLetRec = ([[ident], func, e2], env, store) => {
+let parseLetRec = ([[ident], func, e2], env, store, callback) => {
   let [args, bodyExpr] = func;
   let unwrappedArgs = args.map(([s]) => s);
   let flattened = env.flatten(false); // get a snapshot of the scope stack
@@ -45,118 +89,122 @@ let parseLetRec = ([[ident], func, e2], env, store) => {
 
   env.push();
   env.set(ident, closure);
-  let v2 = evalExpr(e2, env, store);
-  env.pop();
-  return v2;
+  return evalExpr(e2, env, store, v => {
+    env.pop();
+    return callback(v);
+  });
 };
 
-let evalExpr = (term, env, store) => {
-  if(Date.now() > store[START_TIME] + MAX_TIME) {
+let evalExpr = (term, env, store, callback) => {
+  if(store[GLOBALS].canTimeout && Date.now() > store[GLOBALS].startTime + MAX_TIME) {
     throw new err.LettuceRuntimeError('Execution timed out');
   }
-  return _evalExpr(term, env, store);
-};
+  return [term, _evalExpr(term, env, store, callback)];
+}
 
-let _evalExpr = new PatternMatcher((env, store) => [
-  [d.ConstNum, ([n]) => v.NumValue(n)],
-  [d.ConstBool, ([b]) => v.BoolValue(b)],
-  [d.Ident, term => {
+let _evalExpr = new PatternMatcher([
+  [d.ConstNum, ([n], env, store, callback) => (() => callback(v.NumValue(n)))],
+  [d.ConstBool, ([b], env, store, callback) => (() => callback(v.BoolValue(b)))],
+  [d.Ident, (term, env, store, callback) => (() => {
     let [s] = term;
     if(!env.has(s)) throw new err.LettuceRuntimeError(`Variable "${s}" is not defined`, term);
-    return env.get(s)
-  }],
+    return callback(env.get(s));
+  })],
 
   /* Arithmetic Operators */
-  [d.Plus, term => 
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 + v2))
-  ],
-  [d.Minus, term => 
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 - v2))
-  ],
-  [d.Mult, term => 
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 * v2))
-  ],
-  [d.Div, term => 
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.NumValue(v1 / v2))
-  ],
-  [d.Log, term =>
+  [d.Plus, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 + v2)))
+  )],
+  [d.Minus, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 - v2)))
+  )],
+  [d.Mult, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 * v2)))
+  )],
+  [d.Div, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 / v2)))
+  )],
+  [d.Log, (term, env, store, callback) => (() => 
     // automagically handles 1 arg now
-    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.log(v1)))
-  ],
-  [d.Exp, term =>
-    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.exp(v1)))
-  ],
-  [d.Sine, term =>
-    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.sin(v1)))
-  ],
-  [d.Cosine, term =>
-    unwrap(term, env, store, v.valueToNum, v1 => v.NumValue(Math.cos(v1)))
-  ],
+    unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.log(v1))))
+  )],
+  [d.Exp, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.exp(v1))))
+  )],
+  [d.Sine, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.sin(v1))))
+  )],
+  [d.Cosine, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.cos(v1))))
+  )],
 
   /* Comparison Operators */
-  [d.Eq, term => {
+  [d.Eq, (term, env, store, callback) => (() => {
     // differs from the reference implementation in that it will compare any
     // values and only throws if the types are different
     let [e1, e2] = term;
-    let v1 = evalExpr(e1, env, store);
-    let v2 = evalExpr(e2, env, store);
-    return handleEq(ValueTuple(v1, v2, term));
-  }],
-  [d.Neq, term =>
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 != v2))
-  ],
-  [d.Gt, term =>
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 > v2))
-  ],
-  [d.Geq, term =>
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => v.BoolValue(v1 >= v2))
-  ],
+    return evalExpr(e1, env, store, v1 =>
+      evalExpr(e2, env, store, v2 =>
+        callback(handleEq(ValueTuple(v1, v2, term)))
+      )
+    );
+  })],
+  [d.Neq, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.BoolValue(v1 != v2)))
+  )],
+  [d.Gt, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.BoolValue(v1 > v2)))
+  )],
+  [d.Geq, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.BoolValue(v1 >= v2)))
+  )],
 
   /* Logical Operators */
-  [d.Not, term =>
-    unwrap(term, env, store, v.valueToBool, v1 => v.BoolValue(!v1))
-  ],
-  [d.And, term =>
+  [d.Not, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToBool, v1 => callback(v.BoolValue(!v1)))
+  )],
+  [d.And, (term, env, store, callback) => (() => 
     // Do we care about short-circuiting? Reference implementation doesn't see to
-    unwrap(term, env, store, v.valueToBool, (v1, v2) => v.BoolValue(v1 && v2))
-  ],
-  [d.Or, term =>
-    unwrap(term, env, store, v.valueToBool, (v1, v2) => v.BoolValue(v1 || v2))
-  ],
+    unwrap(term, env, store, v.valueToBool, (v1, v2) => callback(v.BoolValue(v1 && v2)))
+  )],
+  [d.Or, (term, env, store, callback) => (() => 
+    unwrap(term, env, store, v.valueToBool, (v1, v2) => callback(v.BoolValue(v1 || v2)))
+  )],
 
 
-  [d.IfThenElse, ([cond, trueExpr, falseExpr]) => {
-    let condVal = v.valueToBool(evalExpr(cond, env, store), cond);
-    if(condVal) {
-      return evalExpr(trueExpr, env, store);
-    } else {
-      return evalExpr(falseExpr, env, store);
-    }
-  }],
+  [d.IfThenElse, ([cond, trueExpr, falseExpr], env, store, callback) => (() =>
+    evalExpr(cond, env, store, v1 => {
+      let condVal = v.valueToBool(v1, cond);
+      if(condVal) {
+        return evalExpr(trueExpr, env, store, callback);
+      } else {
+        return evalExpr(falseExpr, env, store, callback);
+      }
+    })
+  )],
 
-  [d.Block, ([exprs]) => {
-    // this feels hacky but it'd feel like a misuse of fold... *shrug*
-    // should I... special-case the last iteration
-    // ...nah
-    let retVal;
-    for(let expr of exprs) retVal = evalExpr(expr, env, store);
-    return retVal;
-  }],
+  [d.Block, ([exprs], env, store, callback) => (() =>
+    cps_map(exprs, (expr, cb) => evalExpr(expr, env, store, cb), mapped =>
+      callback(mapped[mapped.length - 1])
+    )
+  )],
 
   /* Let Bindings */
-  [d.LetRec, term => parseLetRec(term, env, store)],
-  [d.Let(_, d.FunDef, _), term => parseLetRec(term, env, store)], // if let passed a fundef, do same thing as letrec
-  [d.Let, ([[ident], e1, e2]) => {
-    let v1 = evalExpr(e1, env, store);
-    env.push(); // an alternative to immutable maps for scoping: a stack-map
-    env.set(ident, v1);
-    let v2 = evalExpr(e2, env, store);
-    env.pop();
-    return v2;
-  }],
+  [d.LetRec, (term, env, store, callback) => (() => parseLetRec(term, env, store, callback))],
+  [d.Let(_, d.FunDef, _), (term, env, store, callback) => (() => parseLetRec(term, env, store, callback))], // if let passed a fundef, do same thing as letrec
+  [d.Let, ([[ident], e1, e2], env, store, callback) => (() =>
+    evalExpr(e1, env, store, v1 => {
+      env.push(); // an alternative to immutable maps for scoping: a stack-map
+      env.set(ident, v1);
+      return evalExpr(e2, env, store, v2 => {
+        env.pop();
+        return callback(v2);
+      });
+    })
+  )],
 
   /* Function Stuff */
-  [d.FunDef, ([args, bodyExpr]) => {
+  [d.FunDef, ([args, bodyExpr], env, store, callback) => (() => {
     let unwrappedArgs = [];
     for(let arg of args) {
       let [ident] = arg;
@@ -166,38 +214,45 @@ let _evalExpr = new PatternMatcher((env, store) => [
       unwrappedArgs.push(ident);
     }
     let flattened = env.flatten(false); // get a snapshot of the scope stack
-    return v.Closure(unwrappedArgs, bodyExpr, flattened);
-  }],
-  [d.FunCall, ([e1, argExprs]) => {
-    let [argIdents, funcBody, flattened] = v.valueToClosure(evalExpr(e1, env, store), e1);
-    if(argIdents.length != argExprs.length) {
-      throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
-    }
-    let flattenedAndBound = flattened.flatten(false); // create a copy of the static scope (for recursion)
-    for(let i = 0; i < argIdents.length; i++) {
-      let argIdent = argIdents[i];
-      let argExpr = argExprs[i];
-      let argVal = evalExpr(argExpr, env, store);
-      flattenedAndBound.set(argIdent, argVal); // should probably push here but tail calls
-    }
-    return evalExpr(funcBody, flattenedAndBound, store);
-  }],
+    return callback(v.Closure(unwrappedArgs, bodyExpr, flattened));
+  })],
+  [d.FunCall, ([e1, argExprs], env, store, callback) => (() =>
+    evalExpr(e1, env, store, v1 => {
+      let [argIdents, funcBody, flattened] = v.valueToClosure(v1, e1);
+      if(argIdents.length != argExprs.length) {
+        throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
+      }
+      return cps_map(argExprs, (expr, cb) => evalExpr(expr, env, store, cb), argVals => {
+        let flattenedAndBound = flattened.flatten(false); // create a copy of the static scope (for recursion)
+        for(let i = 0; i < argIdents.length; i++) {
+          let argIdent = argIdents[i];
+          let argVal = argVals[i];
+          flattenedAndBound.set(argIdent, argVal);
+        }
+        return evalExpr(funcBody, flattenedAndBound, store, callback);
+      });
+    })
+  )],
 
   /* References */
-  [d.NewRef, ([e1]) => {
-    let v1 = evalExpr(e1, env, store);
-    return store.newref(v1);
-  }],
-  [d.DeRef, ([e1]) => {
-    let v1 = v.valueToReference(evalExpr(e1, env, store), e1);
-    return store.deref(v1);
-  }],
-  [d.AssignRef, ([e1, e2]) => {
-    let v1 = v.valueToReference(evalExpr(e1, env, store), e1);
-    let v2 = evalExpr(e2, env, store);
-    store.assign(v1, v2);
-    return v2;
-  }],
+  [d.NewRef, ([e1], env, store, callback) => (() =>
+    evalExpr(e1, env, store, v1 => callback(store.newref(v1)))
+  )],
+  [d.DeRef, ([e1], env, store, callback) => (() =>
+    evalExpr(e1, env, store, v1 => {
+      let u = v.valueToReference(v1, e1);
+      callback(store.deref(u));
+    })
+  )],
+  [d.AssignRef, ([e1, e2], env, store, callback) => (() =>
+    evalExpr(e1, env, store, v1 => {
+      let u1 = v.valueToReference(v1, e1);
+      return evalExpr(e2, env, store, v2 => {
+        store.assign(u1, v2);
+        return callback(v2);
+      })
+    })
+  )],
 ]);
 
 let handleEq = new PatternMatcher([

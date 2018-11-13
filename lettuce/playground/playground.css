@@ -54,11 +54,13 @@ h1 {
   border-radius: 5px;
   padding: 2px;
   cursor: default;
-  transition: transform .2s;
+  transition: all .2s;
   transform: scale(1);
 }
-.rendered-tree-node:hover {
+.rendered-tree-node:hover, .rendered-tree-node.highlight {
   transform: scale(1.1);
+  background: teal;
+  color: white;
 }
 
 #toolbar {

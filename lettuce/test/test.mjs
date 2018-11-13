@@ -19,21 +19,17 @@ let test = (suite, name, code, callback) => {
     parsed = parser.results[0];
     if(suite != 'parser') {
       setErrSource(code);
-      evaluated = evaluate(parsed);
+      evaluate(parsed, output => {
+        evaluated = output;
+        if(!callback(parsed, evaluated, err)) {
+          errcount++;
+          console.error(`${suite} test failed: ${name}\n  parsed: ${String(parsed).substring(0, 100)}\n  evaluated: ${evaluated}\n  err: ${err && err.stack}`)
+        }
+      });
     }
   } catch(e) {
-    err = e
-  } finally {
-    let passed = true;
-    try {
-      if(!callback(parsed, evaluated, err)) {
-        errcount++;
-        console.error(`${suite} test failed: ${name}\n  parsed: ${String(parsed).substring(0, 100)}\n  evaluated: ${evaluated}\n  err: ${err && err.stack}`)
-      }
-    } catch(e) {
-        errcount++;
-        console.error(`${suite} test failed: ${name}\n  parsed: ${String(parsed).substring(0, 100)}\n  evaluated: ${evaluated}\n  err: ${err && err.stack}\n  test err: ${e}`)
-    }
+    errcount++;
+    console.error(`${suite} test failed: ${name}\n  parsed: ${String(parsed).substring(0, 100)}\n  evaluated: ${evaluated}\n  err: ${e.stack || e}`)
   }
 };
 

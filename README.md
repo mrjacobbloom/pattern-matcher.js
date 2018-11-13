@@ -258,6 +258,26 @@ let myProgram = Program([
 evalProgram(myProgram);
 ```
 
+Note that those passed values are proxied. If you don't want that, the
+alternative is for each of the match callbacks to accept the parameters instead.
+Thus, the following PatternMatchers are basically equivalent:
+
+```javascript
+let foo = new PatternMatcher((a, b) => [
+ [myTerm, term => console.log(a)]
+]);
+
+let bar = new PatternMatcher([
+ [myTerm, (term, a, b) => console.log(a)]
+]);
+
+// Note that the syntax is:
+patterMatcher(term, ...proxiedArgs, ...passedDirectlyToMatchCallback)
+// where the number of arguments that get "proxied" is based on the number of
+// arguments that the map-returning function (the one passed directly to the
+// PatternMatcher function) expects
+```
+
 You can also pass an "if guard" between the pattern and the callback. An if
 guard is a function that, if it returns false, causes the PatternMatcher to
 continue on to the next pattern. For example, here's an implementation of a BST.

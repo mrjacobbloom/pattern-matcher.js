@@ -1,6 +1,6 @@
 const emptyloc = [[-1, -1], [-1, -1]];
 const emptyarr = [];
-let astToNodeTree = ast => {
+let astToNodeTree = (ast, nodeMap) => {
   let children = emptyarr, loc = emptyloc, name;
   if(ast.term) {
     loc = ast.loc;
@@ -10,12 +10,12 @@ let astToNodeTree = ast => {
         // special case for wrappers of JS values
         name = ast.toString();
       } else {
-        children = ast.map(a => astToNodeTree(a));
+        children = ast.map(a => astToNodeTree(a, nodeMap));
       }
     }
   } else if(Array.isArray(ast)) {
     // it's an array
-    children = ast.map(a => astToNodeTree(a));
+    children = ast.map(a => astToNodeTree(a, nodeMap));
     name = '[list]';
     if(ast.length) {
       let [start] = ast[0].loc;
@@ -25,18 +25,20 @@ let astToNodeTree = ast => {
   } else {
     name = ast.toString();
   }
+  nodeMap.push(ast);
   return {
     children,
-    innerHTML: `<div class="rendered-tree-node" data-loc="${JSON.stringify(loc)}">${name}</div>`
+    innerHTML: `<div class="rendered-tree-node" data-loc="${JSON.stringify(loc)}" data-node-id="${nodeMap.length - 1}">${name}</div>`
   }
 };
 
 export default function(ast, callback) {
+  let nodeMap = [];
   let config = {
     chart: {
       container: '#rendered-tree'
     },
-    nodeStructure: ast ? astToNodeTree(ast) : []
+    nodeStructure: ast ? astToNodeTree(ast, nodeMap) : []
   };
   let chart = new Treant(config, () => {
     requestAnimationFrame(() => {
@@ -45,4 +47,5 @@ export default function(ast, callback) {
       c.scrollLeft = (c.scrollWidth - c.offsetWidth) / 2;
     })
   });
+  return nodeMap;
 }

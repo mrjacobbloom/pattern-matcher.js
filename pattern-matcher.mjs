@@ -170,6 +170,19 @@ let unwrapped = Symbol('unwrapped');
  * to the case callbacks. Note that the arguments are proxies. They'll work
  * fine for predicates or environment var maps, but if you want to pass, say, a
  * number, you'll have to wrap it in an object of some kind.
+ * The remaining arguments are passed directly to the matched function. So
+ * either of these notations will just work:
+ * @example
+ * ```
+ * let foo = new PatternMatcher((a, b) => [
+ *  [myTerm, term => console.log(a)]
+ * ])
+ * let bar = new PatternMatcher([
+ *  [myTerm, (term, a, b) => console.log(a)]
+ * ])
+ * 
+ * patterMatcher(term, ...proxiedArgs, ...passedDirectlyToMatchCallback)
+ * ```
  * @param {Array.<[TermInstance, Function, Function=]> | () => Array.<[TermInstance, Function, Function=]>} termMap
  * @returns {Function} a glorified switch statement.
  */
@@ -185,29 +198,30 @@ export class PatternMatcher {
         callback: cb2 || cb1
       }
     });
-    return (function(term, ...otherArgs) {
-      Types.validate(term);
-      this.pushArgValues(otherArgs);
-      for(let {pattern, ifGuard, callback} of this.patternMap) {
-        if(Types.matches(pattern, term)) {
-          let retval;
-          try {
-            if(ifGuard && ifGuard(term)) continue;
-            retval = callback(term);
-          } catch(err) {
-            if(err.message.includes('undefined is not a function')) {
-              err.message = 'Destructuring failed (try adding or removing brackets)';
-            }
-            throw err;
+    return this._apply.bind(this);
+  }
+  _apply(term, ...otherArgs) {
+    Types.validate(term);
+    let passedArgs = this.pushArgValues(otherArgs);
+    for(let {pattern, ifGuard, callback} of this.patternMap) {
+      if(Types.matches(pattern, term)) {
+        let retval;
+        try {
+          if(ifGuard && ifGuard(term)) continue;
+          retval = callback(term, ...passedArgs);
+        } catch(err) {
+          if(err.message.includes('undefined is not a function')) {
+            err.message = 'Destructuring failed (try adding or removing brackets)';
           }
-          
-          this.popArgValues();
-          return retval;
+          throw err;
         }
+        
+        this.popArgValues();
+        return retval;
       }
-      this.popArgValues();
-      throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${String(term._ancestors)}])`);
-    }).bind(this);
+    }
+    this.popArgValues();
+    throw new TypeError(`No case matched ${term.toString()} (ancestor chain [${String(term._ancestors)}])`);
   }
   getArgValue(n) {
     let stack = this.argValueStacks[n];
@@ -233,7 +247,9 @@ export class PatternMatcher {
           this.getArgValue(i)[prop] = value;
         }).bind(this),
         apply: (function(target, thisArg, args) {
+          try {
           return this.getArgValue(i).apply(thisArg, args);
+          } catch(e) {console.error(e), console.log('argValueStacks', this.argValueStacks)}
         }).bind(this),
         construct: (function(target, args) {
           let _constructor = this.getArgValue(i);
@@ -246,11 +262,12 @@ export class PatternMatcher {
     return func(...this.argProxies);
   }
   pushArgValues(args) {
-    if(!this.argValueStacks) return;
+    if(!this.argValueStacks) return args;
     for(let i = 0; i < this.argValueStacks.length; i++) {
       let arg = args[i];
       this.argValueStacks[i].push(arg[unwrapped] || arg);
     }
+    return [args.slice(this.argValueStacks.length - 1)];
   }
   popArgValues() {
     if(!this.argValueStacks) return;
