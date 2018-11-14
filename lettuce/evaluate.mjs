@@ -23,9 +23,9 @@ export let evaluate = function(program, callback) {
   trampoline(evalExpr(expr, env, store, callback));
 };
 
-let trampoline = ([term, result]) => {
-  while(typeof result == 'function') [term, result] = result();
-  return result;
+let trampoline = (thunk) => {
+  if(thunk instanceof Thunk) thunk = thunk.callback();
+  return thunk;
 };
 
 export let stepThrough = function(program, callback) {
@@ -36,14 +36,10 @@ export let stepThrough = function(program, callback) {
     startTime: null,
     canTimeout: false
   }
-  let term, result = () => evalExpr(expr, env, store, callback);
+  let thunk = new Thunk(expr, env, store, () => evalExpr(expr, env, store, callback));
   return () => {
-    if(typeof result == 'function') {
-      [term, result] = result();
-      return [term, result];
-    } else {
-      return [null, null];
-    }
+    if(thunk instanceof Thunk) thunk = thunk.callback();
+    return thunk;
   };
 }
 
@@ -83,9 +79,9 @@ let unwrap = (exprs, env, store, unwrapFunc, callback) => {
 let parseLetRec = ([[ident], func, e2], env, store, callback) => {
   let [args, bodyExpr] = func;
   let unwrappedArgs = args.map(([s]) => s);
-  let flattened = env.flatten(false); // get a snapshot of the scope stack
-  let closure = v.Closure(unwrappedArgs, bodyExpr, flattened);
-  flattened.set(ident, closure);
+  let cloned = env.clone(false); // get a snapshot of the scope stack
+  let closure = v.Closure(unwrappedArgs, bodyExpr, cloned);
+  cloned.set(ident, closure);
 
   env.push();
   env.set(ident, closure);
@@ -95,11 +91,20 @@ let parseLetRec = ([[ident], func, e2], env, store, callback) => {
   });
 };
 
+export class Thunk {
+  constructor(term, env, store, callback) {
+    this.term = term;
+    this.env = env;
+    this.store = store;
+    this.callback = callback;
+  }
+}
+
 let evalExpr = (term, env, store, callback) => {
   if(store[GLOBALS].canTimeout && Date.now() > store[GLOBALS].startTime + MAX_TIME) {
     throw new err.LettuceRuntimeError('Execution timed out');
   }
-  return [term, _evalExpr(term, env, store, callback)];
+  return new Thunk(term, env, store, _evalExpr(term, env, store, callback));
 }
 
 let _evalExpr = new PatternMatcher([
@@ -213,23 +218,23 @@ let _evalExpr = new PatternMatcher([
       }
       unwrappedArgs.push(ident);
     }
-    let flattened = env.flatten(false); // get a snapshot of the scope stack
-    return callback(v.Closure(unwrappedArgs, bodyExpr, flattened));
+    let cloned = env.clone(false); // get a snapshot of the scope stack
+    return callback(v.Closure(unwrappedArgs, bodyExpr, cloned));
   })],
   [d.FunCall, ([e1, argExprs], env, store, callback) => (() =>
     evalExpr(e1, env, store, v1 => {
-      let [argIdents, funcBody, flattened] = v.valueToClosure(v1, e1);
+      let [argIdents, funcBody, cloned] = v.valueToClosure(v1, e1);
       if(argIdents.length != argExprs.length) {
         throw new err.LettuceRuntimeError(`Function expected ${argIdents.length} arguments but was passed ${argExprs.length}`, e1);
       }
       return cps_map(argExprs, (expr, cb) => evalExpr(expr, env, store, cb), argVals => {
-        let flattenedAndBound = flattened.flatten(false); // create a copy of the static scope (for recursion)
+        let bound = cloned.clone(false); // create a copy of the static scope (for recursion)
         for(let i = 0; i < argIdents.length; i++) {
           let argIdent = argIdents[i];
           let argVal = argVals[i];
-          flattenedAndBound.set(argIdent, argVal);
+          bound.set(argIdent, argVal);
         }
-        return evalExpr(funcBody, flattenedAndBound, store, callback);
+        return evalExpr(funcBody, bound, store, callback);
       });
     })
   )],

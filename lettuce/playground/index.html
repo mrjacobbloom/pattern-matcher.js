@@ -22,13 +22,22 @@
       </div>
     </div>
     <div id="col-3" class="col">
-      <h2>Output</h2>
-      <div id="toolbar">
-        <button id="run">Run</button>
-        <button id="step">Step</button>
+      <div id="col-3-top" class="row">
+        <h2>Output</h2>
+        <div class="col-content">
+          <div id="toolbar">
+            <button id="run">Play</button>
+            <button id="step">Step</button>
+          </div>
+          <div id="results-wrapper">
+            <div id="results"></div>
+            <pre id="errors"></pre>
+          </div>
+        </div>
       </div>
-      <div class="col-content">
-          <pre id="results"></pre>
+      <div id="col-3-bottom" class="row">
+        <h2>Environment</h2>
+        <div class="col-content" id="env"></div>
       </div>
     </div>
   </div>

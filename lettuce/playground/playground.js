@@ -1,15 +1,18 @@
 import nearley from 'https://dev.jspm.io/nearley@2.15.1';
 import grammar from '../grammar.mjs';
-import {evaluate, stepThrough} from '../evaluate.mjs';
+import {Thunk, stepThrough} from '../evaluate.mjs';
 import {renderTree, centerTree} from './renderTree.js';
 import {setErrSource} from '../errors.mjs';
 import {lettuceHighlightMode} from './lettuceHighlightMode.js'
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
-let editor, ast, results, stepFunc, nodeMap = [];
+let editor, ast, stepFunc, nodeMap = [];
 
-let log = (msg = '') => (results.textContent = msg.stack || String(msg));
+let logErr = (msg = '') => {
+  document.querySelector('#results').innerHTML = '';
+  document.querySelector('#errors').textContent = msg.stack || String(msg)
+};
 
 let selectNodeInSource = node => {
   let loc = JSON.parse(node.getAttribute('data-loc'));
@@ -20,6 +23,35 @@ let selectNodeInSource = node => {
   // even when they overlap or contain the new range! Good work, ace
   editor.addSelectionMarker(range);
   return () => editor.removeSelectionMarker(range);
+}
+
+let valueToHTML = value => {
+  if(!value) return '';
+  let v;
+  if(value.termName == 'Closure') {
+    let [idents, expr, env] = value;
+    v = `Closure([${idents.toString()}], Expr..., Env)`;
+  } else {
+    v = value.toString();
+  }
+  return `<div class="lettuce-value">${v}</div>`;
+}
+
+let renderEnv = (env, store) => {
+  let envArea = document.querySelector('#env');
+  envArea.innerHTML = '';
+  if(env) {
+    for(let i = env._stack.length - 1; i >= 0; i--) {
+      let frame = env._stack[i];
+      if(!frame.size) continue;
+      let html = '<div class="env-scope">';
+      for(let [ident, value] of frame) {
+        html += `<div class="env-binding">${ident} &rarr; ${valueToHTML(value)}</div>`
+      }
+      html += '</div>'
+      envArea.innerHTML += html;
+    }
+  }
 }
 
 let deselectFunc;
@@ -38,17 +70,20 @@ let highlightNode = term => {
 let step = () => {
   try {
     if(stepFunc) {
-      let [node, result] = stepFunc();
-      highlightNode(node);
-      if(typeof result != 'function') {
-        //log(result);
+      let thunk = stepFunc();
+      if(thunk instanceof Thunk) {
+        highlightNode(thunk.term);
+        renderEnv(thunk.env, thunk.store);
+      } else {
+        highlightNode(null);
+        renderEnv(null, null);
         setPlayState('PAUSE');
       }
     } else {
       return;
     }
   } catch(err) {
-    log(err)
+    logErr(err)
   }
 }
 
@@ -58,7 +93,7 @@ function setPlayState(state) {
   let runButton = document.querySelector('#run');
   if(state == 'PAUSE') {
     playState = 'PAUSE'
-    runButton.textContent = 'Run';
+    runButton.textContent = 'Play';
     if(playInterval !== null) {
       clearInterval(playInterval);
       playInterval = null;
@@ -71,18 +106,22 @@ function setPlayState(state) {
     }
   }
 }
+let genStepFunc = result => {
+  logErr();
+  document.querySelector('#results').innerHTML = valueToHTML(result);
+  setPlayState('PAUSE');
+  stepFunc = stepThrough(ast, genStepFunc); // So you can play it a second time
+  return;
+}
 
 let sourceUpdated = () => {
   let data = editor.getValue();
   let parser = new nearley.Parser(grammar2);
-  log();
+  logErr();
   setErrSource(data);
   try {
     if(!data.length) {
-      renderTree(null);
-      nodeMap = [];
-      stepFunc = null;
-      return;
+      throw null;
     }
     parser.feed(data);
     if(!parser.results.length) {
@@ -90,16 +129,13 @@ let sourceUpdated = () => {
     }
     ast = parser.results[0];
     nodeMap = renderTree(ast);
-    let genStepFunc = result => {
-      log(result);
-      setPlayState('PAUSE');
-      stepFunc = stepThrough(ast, genStepFunc); // So you can play it a second time
-      return [];
-    }
     genStepFunc();
   } catch(e) {
     console.log(ast);
-    log(e);
+    renderTree(null);
+    nodeMap = [];
+    stepFunc = null;
+    logErr(e);
   }
 };
 
@@ -113,10 +149,10 @@ let initProgram = `letrec fib = function(x)
     in fib(3)`;
 
 window.addEventListener('load', () => {
-  results = document.querySelector('#results');
-
+  // Set up the draggy gutters
   Split(['#col-1', '#col-2', '#col-3'], {
-    gutterSize: 3,
+    gutterSize: 10,
+    sizes: [20, 60, 20],
     elementStyle: (dimension, size, gutterSize) => ({
       'flex-basis': `calc(${size}% - ${gutterSize}px)`,
     }),
@@ -124,6 +160,16 @@ window.addEventListener('load', () => {
         'flex-basis':  `${gutterSize}px`,
     }),
     onDrag: centerTree
+  });
+  Split(['#col-3-top', '#col-3-bottom'], {
+    gutterSize: 10,
+    elementStyle: (dimension, size, gutterSize) => ({
+      'flex-basis': `calc(${size}% - ${gutterSize}px)`,
+    }),
+    gutterStyle: (dimension, gutterSize) => ({
+        'flex-basis':  `${gutterSize}px`,
+    }),
+    direction: 'vertical'
   });
 
   // initialize the editor

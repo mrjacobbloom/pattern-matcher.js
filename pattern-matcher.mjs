@@ -449,15 +449,18 @@ export class ScopedMap {
     this._stack.pop();
   }
   /**
-   * Flatten the current scope stack into a vanilla Map (for lexical/static scoping)
+   * Clone the current scope stack (for lexical/static scoping)
    * @return {Map}
    */
-  flatten(mutables = true) {
-    let map = new Map();
-    for(let scope of this._stack) {
-      map = new Map([...map, ...scope]);
+  clone(mutables = true) {
+    let out = new ScopedMap();
+    for(let i = this._stack.length - 1; i >= 0; i--) {
+      let map = new Map([...this._stack[i]]);
+      out.push(map);
     }
-    return new ScopedMap(map, this._throwOnUndeclared, mutables);
+    out._throwOnUndeclared = this._throwOnUndeclared;
+    out._frozen = mutables;
+    return out;
   }
   /**
    * Get whether an identifier is defined anywhere in the scope stack
