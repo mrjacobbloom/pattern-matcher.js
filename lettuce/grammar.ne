@@ -115,7 +115,7 @@ ConstBool ->
 | "false"             {% t => d.ConstBool(false).setLoc(t[0]) %}
 ConstNum ->
   %number   {% t => d.ConstNum(+t[0].text).setLoc(t[0]) %}
-| "-" %number   {% t => d.ConstNum(-t[0].text).setLoc(t[0], t[1]) %}
+| "-" %number   {% t => d.ConstNum(-t[1].text).setLoc(t[0], t[1]) %}
 Ident -> %identifier  {% t => d.Ident(t[0].text).setLoc(t[0]) %}
 
 _o ->

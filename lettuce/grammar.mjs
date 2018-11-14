@@ -117,7 +117,7 @@ let ParserRules = [
     {"name": "ConstBool", "symbols": [{"literal":"true"}], "postprocess": t => d.ConstBool(true).setLoc(t[0])},
     {"name": "ConstBool", "symbols": [{"literal":"false"}], "postprocess": t => d.ConstBool(false).setLoc(t[0])},
     {"name": "ConstNum", "symbols": [(lexer.has("number") ? {type: "number"} : number)], "postprocess": t => d.ConstNum(+t[0].text).setLoc(t[0])},
-    {"name": "ConstNum", "symbols": [{"literal":"-"}, (lexer.has("number") ? {type: "number"} : number)], "postprocess": t => d.ConstNum(-t[0].text).setLoc(t[0], t[1])},
+    {"name": "ConstNum", "symbols": [{"literal":"-"}, (lexer.has("number") ? {type: "number"} : number)], "postprocess": t => d.ConstNum(-t[1].text).setLoc(t[0], t[1])},
     {"name": "Ident", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)], "postprocess": t => d.Ident(t[0].text).setLoc(t[0])},
     {"name": "_o", "symbols": ["_"], "postprocess": nuller},
     {"name": "_o", "symbols": [], "postprocess": nuller},
