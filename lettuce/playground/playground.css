@@ -20,11 +20,14 @@ h1 {
   flex: 1;
   flex-grow: 1;
   display: flex;
-  flex-direction: column
+  width: calc(100vw / 3);
+  flex-direction: column;
 }
-.col:not(:last-child) {
-  border-right: 1px solid #ddd;
+.gutter {
+  background: #ddd;
+  cursor: col-resize;
 }
+
 .col > h2 {
   background: #ddd;
   font-weight: 100;
@@ -35,7 +38,6 @@ h1 {
 .col-content {
   flex-grow: 1;
   position: relative;
-  max-width: calc(100vw / 3); /* flaexbox fails me */
   overflow: scroll;
 }
 

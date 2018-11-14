@@ -1,7 +1,7 @@
 import nearley from 'https://dev.jspm.io/nearley@2.15.1';
 import grammar from '../grammar.mjs';
 import {evaluate, stepThrough} from '../evaluate.mjs';
-import renderTree from './renderTree.js';
+import {renderTree, centerTree} from './renderTree.js';
 import {setErrSource} from '../errors.mjs';
 import {lettuceHighlightMode} from './lettuceHighlightMode.js'
 
@@ -114,6 +114,17 @@ let initProgram = `letrec fib = function(x)
 
 window.addEventListener('load', () => {
   results = document.querySelector('#results');
+
+  Split(['#col-1', '#col-2', '#col-3'], {
+    gutterSize: 3,
+    elementStyle: (dimension, size, gutterSize) => ({
+      'flex-basis': `calc(${size}% - ${gutterSize}px)`,
+    }),
+    gutterStyle: (dimension, gutterSize) => ({
+        'flex-basis':  `${gutterSize}px`,
+    }),
+    onDrag: centerTree
+  });
 
   // initialize the editor
   document.querySelector('#editor').textContent = initProgram;

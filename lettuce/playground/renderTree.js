@@ -32,7 +32,7 @@ let astToNodeTree = (ast, nodeMap) => {
   }
 };
 
-export default function(ast, callback) {
+export function renderTree(ast, callback) {
   let nodeMap = [];
   let config = {
     chart: {
@@ -41,11 +41,13 @@ export default function(ast, callback) {
     nodeStructure: ast ? astToNodeTree(ast, nodeMap) : []
   };
   let chart = new Treant(config, () => {
-    requestAnimationFrame(() => {
-      // I believe this is a misuse of rAF but whatevs
-      let c = document.querySelector('#rendered-tree');
-      c.scrollLeft = (c.scrollWidth - c.offsetWidth) / 2;
-    })
+    // I believe this is a misuse of rAF but whatevs
+    requestAnimationFrame(centerTree);
   });
   return nodeMap;
+}
+
+export function centerTree() {
+  let c = document.querySelector('#rendered-tree');
+  c.scrollLeft = (c.scrollWidth - c.offsetWidth) / 2;
 }
