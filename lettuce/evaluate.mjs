@@ -127,11 +127,17 @@ let _evalExpr = new PatternMatcher([
     unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 * v2)))
   )],
   [d.Div, (term, env, store, callback) => (() => 
-    unwrap(term, env, store, v.valueToNum, (v1, v2) => callback(v.NumValue(v1 / v2)))
+    unwrap(term, env, store, v.valueToNum, (v1, v2) => {
+      if(v2 === 0) throw new err.LettuceRuntimeError("Divide by 0 error", term)
+      return callback(v.NumValue(v1 / v2))
+    })
   )],
   [d.Log, (term, env, store, callback) => (() => 
     // automagically handles 1 arg now
-    unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.log(v1))))
+    unwrap(term, env, store, v.valueToNum, v1 => {
+      if(v1 <= 0) throw new err.LettuceRuntimeError(`Log of number <= 0: ${v1}`, term)
+      return callback(v.NumValue(Math.log(v1)))
+    })
   )],
   [d.Exp, (term, env, store, callback) => (() => 
     unwrap(term, env, store, v.valueToNum, v1 => callback(v.NumValue(Math.exp(v1))))
