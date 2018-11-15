@@ -36,10 +36,11 @@ rl.on('line', function(line) {
   let parsed = parser.results[0];
   setErrSource(parsed);
   try {
-    let evaluated = evaluate(parsed);
-    console.log(evaluated.toString());
-    cache = '';
-    rl.prompt();
+    evaluate(parsed, evaluated => {
+      console.log(evaluated.toString());
+      cache = '';
+      rl.prompt();
+    });
   } catch(e) {
     console.log(e.message || e);
     cache = '';

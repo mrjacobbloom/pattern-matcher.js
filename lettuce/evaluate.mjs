@@ -20,11 +20,9 @@ export let evaluate = function(program, callback) {
     startTime: Date.now(),
     canTimeout: true
   }
-  trampoline(evalExpr(expr, env, store, callback));
-};
-
-let trampoline = (thunk) => {
-  if(thunk instanceof Thunk) thunk = thunk.callback();
+  // the famous trampoline
+  let thunk = evalExpr(expr, env, store, callback);
+  while(thunk instanceof Thunk) thunk = thunk.callback();
   return thunk;
 };
 
