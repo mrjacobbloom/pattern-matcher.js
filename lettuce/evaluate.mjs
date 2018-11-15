@@ -252,7 +252,7 @@ let _evalExpr = new PatternMatcher([
   [d.DeRef, ([e1], env, store, callback) => (() =>
     evalExpr(e1, env, store, v1 => {
       let u = v.valueToReference(v1, e1);
-      callback(store.deref(u));
+      return callback(store.deref(u));
     })
   )],
   [d.AssignRef, ([e1, e2], env, store, callback) => (() =>
