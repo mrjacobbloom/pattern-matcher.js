@@ -8,7 +8,7 @@ import {lettuceHighlightMode} from './lettuceHighlightMode.js'
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
-let editor, ast, stepFunc, nodeMap = [];
+let editor, ast, stepFunc, nodeMap = [], rightColSplit;
 
 let logErr = (msg = '') => {
   document.querySelector('#results').innerHTML = '';
@@ -55,7 +55,8 @@ let renderEnv = (env, store) => {
   }
   let storeArea = document.querySelector('#store');
   let html = '';
-  if(store) {
+  if(store && store._data.length) {
+    if(rightColSplit.getSizes()[2] < 10) rightColSplit.setSizes([20, 50, 30]);
     for(let i = 0; i < store._data.length; i++) {
       html += `<div class="env-binding">${i} &rarr; ${valueToHTML(store._data[i])}</div>`
     }
@@ -178,9 +179,9 @@ window.addEventListener('load', () => {
     }),
     onDrag: centerTree
   });
-  Split(['#col-3-top', '#col-3-middle', '#col-3-bottom'], {
+  rightColSplit = Split(['#col-3-top', '#col-3-middle', '#col-3-bottom'], {
     gutterSize: 10,
-    sizes: [25, 66, 10],
+    sizes: [30, 70, 0],
     minSize: [20, 20, 0],
     elementStyle: (dimension, size, gutterSize) => ({
       'flex-basis': `calc(${size}% - ${gutterSize}px)`,
