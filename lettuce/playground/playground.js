@@ -1,5 +1,6 @@
 import nearley from 'https://dev.jspm.io/nearley@2.15.1';
 import grammar from '../grammar.mjs';
+import defaultPrograms from './defaultPrograms.mjs';
 import {Thunk, stepThrough} from '../evaluate.mjs';
 import {renderTree, centerTree} from './renderTree.js';
 import {setErrSource} from '../errors.mjs';
@@ -52,6 +53,14 @@ let renderEnv = (env, store) => {
       envArea.innerHTML += html;
     }
   }
+  let storeArea = document.querySelector('#store');
+  let html = '';
+  if(store) {
+    for(let i = 0; i < store._data.length; i++) {
+      html += `<div class="env-binding">${i} &rarr; ${valueToHTML(store._data[i])}</div>`
+    }
+  }
+  storeArea.innerHTML = html;
 }
 
 let deselectFunc;
@@ -74,10 +83,11 @@ let step = () => {
       if(thunk instanceof Thunk) {
         highlightNode(thunk.term);
         renderEnv(thunk.env, thunk.store);
+        document.querySelector('#results').innerHTML = '';
       } else {
         highlightNode(null);
         renderEnv(null, null);
-        setPlayState('PAUSE');
+        setPlayState(PLAY_STATES.PAUSE);
       }
     } else {
       return;
@@ -87,29 +97,43 @@ let step = () => {
   }
 }
 
-let playState = 'PAUSE';
+const PLAY_STATES = {
+  PLAY: 1,
+  PAUSE: 2,
+  SKIP: 3
+};
+let playState = PLAY_STATES.PAUSE;
 let playInterval = null;
 function setPlayState(state) {
   let runButton = document.querySelector('#run');
-  if(state == 'PAUSE') {
-    playState = 'PAUSE'
-    runButton.textContent = 'Play';
-    if(playInterval !== null) {
-      clearInterval(playInterval);
-      playInterval = null;
+  playState = state;
+  switch(state) {
+    case PLAY_STATES.PAUSE: {
+      runButton.innerHTML = '<i class="icon-play"></i>';
+      if(playInterval !== null) {
+        clearInterval(playInterval);
+        playInterval = null;
+      }
+      break;
     }
-  } else {
-    playState = 'PLAY';
-    runButton.textContent = 'Pause';
-    if(playInterval === null) {
+    case PLAY_STATES.PLAY: {
+      runButton.innerHTML = '<i class="icon-pause"></i>';
+      if(playInterval !== null) clearInterval(playInterval);
       playInterval = setInterval(step, 150);
+      break;
+    }
+    case PLAY_STATES.SKIP: {
+      runButton.innerHTML = '<i class="icon-pause"></i>';
+      if(playInterval !== null) clearInterval(playInterval);
+      playInterval = setInterval(step, 4);
+      break;
     }
   }
 }
 let genStepFunc = result => {
   logErr();
   document.querySelector('#results').innerHTML = valueToHTML(result);
-  setPlayState('PAUSE');
+  setPlayState(PLAY_STATES.PAUSE);
   stepFunc = stepThrough(ast, genStepFunc); // So you can play it a second time
   return;
 }
@@ -118,10 +142,12 @@ let sourceUpdated = () => {
   let data = editor.getValue();
   let parser = new nearley.Parser(grammar2);
   logErr();
+  if(deselectFunc) deselectFunc();
+  setPlayState(PLAY_STATES.PAUSE);
   setErrSource(data);
   try {
     if(!data.length) {
-      throw null;
+      throw '';
     }
     parser.feed(data);
     if(!parser.results.length) {
@@ -139,15 +165,6 @@ let sourceUpdated = () => {
   }
 };
 
-let initProgram = `letrec fib = function(x)
-    if x <= 0 then
-        0
-    else if x == 1 then
-        1
-    else
-        fib(x-1) + fib(x-2)
-    in fib(3)`;
-
 window.addEventListener('load', () => {
   // Set up the draggy gutters
   Split(['#col-1', '#col-2', '#col-3'], {
@@ -161,8 +178,10 @@ window.addEventListener('load', () => {
     }),
     onDrag: centerTree
   });
-  Split(['#col-3-top', '#col-3-bottom'], {
+  Split(['#col-3-top', '#col-3-middle', '#col-3-bottom'], {
     gutterSize: 10,
+    sizes: [25, 66, 10],
+    minSize: [20, 20, 0],
     elementStyle: (dimension, size, gutterSize) => ({
       'flex-basis': `calc(${size}% - ${gutterSize}px)`,
     }),
@@ -173,10 +192,25 @@ window.addEventListener('load', () => {
   });
 
   // initialize the editor
-  document.querySelector('#editor').textContent = initProgram;
+  let defaultProgramsSelect = document.querySelector('#default-programs');
+  let first = true;
+  for(let [name, value] of Object.entries(defaultPrograms)) {
+    let option = document.createElement('option');
+    option.value = value;
+    option.innerText = name;
+    if(first) { // this is hacky, but idc
+      first = false;
+      option.selected = 'selected';
+      document.querySelector('#editor').textContent = value;
+    }
+    defaultProgramsSelect.appendChild(option);
+  }
   editor = ace.edit('editor');
   editor.session.on('change', sourceUpdated);
   editor.session.setMode(lettuceHighlightMode);
+  defaultProgramsSelect.addEventListener('change', () => {
+    editor.setValue(defaultProgramsSelect.value);
+  })
 
   // initialize parse tree and stuff
   let tree = document.querySelector('#rendered-tree');
@@ -191,15 +225,19 @@ window.addEventListener('load', () => {
   // set up 3rd column buttns and stuff
   let runButton = document.querySelector('#run');
   let stepButton = document.querySelector('#step');
+  let skipButton = document.querySelector('#skip');
   runButton.addEventListener('click', () => {
-    if(playState == 'PAUSE') {
-      setPlayState('PLAY');
+    if(playState == PLAY_STATES.PAUSE) {
+      setPlayState(PLAY_STATES.PLAY);
     } else {
-      setPlayState('PAUSE');
+      setPlayState(PLAY_STATES.PAUSE);
     }
   });
   stepButton.addEventListener('click', () => {
-    setPlayState('PAUSE')
+    setPlayState(PLAY_STATES.PAUSE);
     step();
+  });
+  skipButton.addEventListener('click', () => {
+    setPlayState(PLAY_STATES.SKIP);
   });
 });

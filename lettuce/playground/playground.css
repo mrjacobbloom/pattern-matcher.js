@@ -4,6 +4,7 @@ body {
   flex-direction: column;
   margin: 0;
   background: hsl(215, 100%, 95%);
+  height: 100vh;
 }
 h1 {
   background: #4C97FF;
@@ -12,6 +13,17 @@ h1 {
   font-weight: 100;
   text-align: center;
   margin: 0;
+}
+.help {
+  font-family: FontAwesome;
+  text-decoration: none;
+  color: white;
+  transition: all .2s;
+  transform: scale(1);
+  float: right;
+}
+.help:hover {
+  transform: scale(1.1);
 }
 
 #main {
@@ -25,24 +37,11 @@ h1 {
   display: flex;
   flex-direction: column;
 }
-#col-2 {
-  min-width: calc(100vw / 3);
-}
-#col-3 {
-  max-width: calc(100vw / 3);
-}
 .gutter {
-  background: hsl(215, 100%, 95%);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.gutter::after {
-  content: ".\00a0.\00a0.";
-  color: #3373CC;
-  font-weight: bold;
-  text-align: center;
 }
 .gutter-vertical {
   cursor: row-resize;
@@ -51,9 +50,14 @@ h1 {
   cursor: col-resize;
   width: 10px;
 }
+.gutter::after {
+  content: "\f141";
+  font-family: FontAwesome;
+  color: #4C97FF;
+  font-size: 10pt;
+}
 .gutter-horizontal::after {
-  transform: rotate(-90deg);
-  transform-origin: 0 10%;
+  content: "\f142";
 }
 
 h2 {
@@ -79,6 +83,17 @@ h2 {
   padding-bottom: 0;
 }
 
+#col-1 {min-width: 200px;}
+#col-2 {min-width: calc(100vw / 3);}
+#col-3 {max-width: calc(100vw / 3);}
+
+#editor {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
 
 .rendered-tree-node {
   font-size: 10pt;
@@ -97,14 +112,15 @@ h2 {
   background: #3373CC;
 }
 
-#toolbar {
+.toolbar {
   background: rgba(0, 0, 0, 0.07);
-  padding: 5px;
+  height: 40px;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
-#toolbar button {
+.toolbar button {
   margin: 0 2.5px;
   appearance: none;
   background: white;
@@ -115,22 +131,34 @@ h2 {
   transition: transform .2s;
   transform: scale(1);
 }
-#toolbar button:disabled {
+.toolbar button:disabled {
   background: #bbb;
 }
-#toolbar button:not(:disabled):hover {
+.toolbar button:not(:disabled):hover {
   transform: scale(1.1);
 }
 
+.toolbar select {
+  height: 27px;
+}
+
 #results-wrapper {
-  padding: 5px;
-  overflow: scroll;
+  padding: 10px;
+  position: relative;
+  height: calc(100% - 40px);
 }
 #errors {
   margin: 0;
+  padding: 10px;
+  position:absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  overflow: scroll;
 }
 
-#env {
+#env, #store {
   padding: 10px;
 }
 .env-scope {

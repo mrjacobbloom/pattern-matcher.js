@@ -6,14 +6,20 @@
   <script src="./lib/raphael.js"></script>
   <script src="./lib/Treant.js"></script>
   <link rel="stylesheet" href="./lib/Treant.css"/>
+  <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
   <script src="./playground.js" type="module"></script>
 </head>
 <body>
-  <h1>Lettuce Playground</h1>
+  <h1>Lettuce Playground <a class="help" href="https://github.com/mrjacobbloom/pattern-matcher.js/tree/master/lettuce">&#xF059;</a></h1>
   <div id="main">
     <div id="col-1" class="col">
       <h2>Lettuce Input</h2>
-      <div class="col-content" id="editor"></div>
+      <div class="col-content">
+          <div class="toolbar">
+            <select id="default-programs"></select>
+          </div>
+        <div id="editor"></div>
+      </div>
     </div>
     <div id="col-2" class="col">
       <h2>Abstract Syntax Tree</h2>
@@ -25,9 +31,10 @@
       <div id="col-3-top" class="row">
         <h2>Output</h2>
         <div class="col-content">
-          <div id="toolbar">
-            <button id="run">Play</button>
-            <button id="step">Step</button>
+          <div class="toolbar">
+            <button id="run"><i class="icon-play"></i></button>
+            <button id="step"><i class="icon-step-forward"></i></button>
+            <button id="skip"><i class="icon-fast-forward"></i></button>
           </div>
           <div id="results-wrapper">
             <div id="results"></div>
@@ -35,10 +42,14 @@
           </div>
         </div>
       </div>
-      <div id="col-3-bottom" class="row">
+      <div id="col-3-middle" class="row">
         <h2>Environment</h2>
         <div class="col-content" id="env"></div>
       </div>
+      <div id="col-3-bottom" class="row">
+          <h2>Store</h2>
+          <div class="col-content" id="store"></div>
+        </div>
     </div>
   </div>
 </body>
