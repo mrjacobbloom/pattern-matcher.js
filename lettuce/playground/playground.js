@@ -216,7 +216,7 @@ window.addEventListener('load', () => {
   // Set up the draggy gutters
   Split(['#col-1', '#col-2', '#col-3'], {
     ...splitDefaults,
-    sizes: [20, 60, 20],
+    sizes: [30, 50, 20],
     onDrag: centerTree
   });
   rightColSplit = Split(['#col-3-top', '#col-3-middle', '#col-3-bottom'], {
@@ -239,7 +239,8 @@ window.addEventListener('load', () => {
   editor.session.on('change', sourceUpdated);
   editor.session.setMode(lettuceHighlightMode);
   defaultProgramsSelect.addEventListener('change', () => {
-    editor.setValue(defaultProgramsSelect.value);
+    if(tree.deselectFunc) tree.deselectFunc();
+    editor.session.setValue(defaultProgramsSelect.value);
   })
 
   // initialize parse tree and stuff
