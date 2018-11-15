@@ -13,6 +13,9 @@ Write some lettuce in the [online playground](https://mrjacobbloom.github.io/pat
 
 I've made a couple changes to the language:
 
+- The identifiers in let bindings and function declarations are stored as
+  `Ident`s instead of plain old strings. This is done to store their location
+  in the source code, for errors and for step-through highlighting.
 - The `==` operator can be used to compare any 2 things of like type, not just
   numbers.
 - `let` automagically works the same as `letrec` if the first expression is a
