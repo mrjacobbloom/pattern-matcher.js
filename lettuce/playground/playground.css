@@ -5,6 +5,7 @@ body {
   margin: 0;
   background: hsl(215, 100%, 95%);
   height: 100vh;
+  overflow: hidden;
 }
 h1 {
   background: #4C97FF;
