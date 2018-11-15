@@ -31,7 +31,7 @@ let valueToHTML = value => {
   let v;
   if(value.termName == 'Closure') {
     let [idents, expr, env] = value;
-    v = `Closure([${idents.toString()}], Expr..., Env)`;
+    v = `Closure([${idents.toString()}], ${expr.termName}(...), Env)`;
   } else {
     v = value.toString();
   }
@@ -82,9 +82,17 @@ let step = () => {
     if(stepFunc) {
       let thunk = stepFunc();
       if(thunk instanceof Thunk) {
-        highlightNode(thunk.term);
-        renderEnv(thunk.env, thunk.store);
-        document.querySelector('#results').innerHTML = '';
+        if(playState == PLAY_STATES.SKIP) {
+          if(Date.now() - skipStartTime > 2000) {
+            setPlayState(PLAY_STATES.PAUSE);
+            throw 'Execution timed out';
+          }
+          step();
+        } else {
+          highlightNode(thunk.term);
+          renderEnv(thunk.env, thunk.store);
+          document.querySelector('#results').innerHTML = '';
+        }
       } else {
         highlightNode(null);
         renderEnv(null, null);
@@ -103,6 +111,7 @@ const PLAY_STATES = {
   PAUSE: 2,
   SKIP: 3
 };
+let skipStartTime;
 let playState = PLAY_STATES.PAUSE;
 let playInterval = null;
 function setPlayState(state) {
@@ -115,18 +124,21 @@ function setPlayState(state) {
         clearInterval(playInterval);
         playInterval = null;
       }
+      skipStartTime = null;
       break;
     }
     case PLAY_STATES.PLAY: {
       runButton.innerHTML = '<i class="icon-pause"></i>';
       if(playInterval !== null) clearInterval(playInterval);
       playInterval = setInterval(step, 150);
+      skipStartTime = null;
       break;
     }
     case PLAY_STATES.SKIP: {
       runButton.innerHTML = '<i class="icon-pause"></i>';
       if(playInterval !== null) clearInterval(playInterval);
-      playInterval = setInterval(step, 4);
+      skipStartTime = Date.now();
+      step();
       break;
     }
   }

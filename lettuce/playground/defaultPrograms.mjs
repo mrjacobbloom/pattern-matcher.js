@@ -47,7 +47,7 @@ x`,
 `letrec getFirstDigit = function(num)
 if(num < 0) then
     getFirstDigit(num * -1)
-else if(num / 10 < 1) then
+else if(num < 10) then
     if     (num < 1) then 0
     else if(num < 2) then 1
     else if(num < 3) then 2

@@ -156,6 +156,7 @@ h2 {
   bottom: 0;
   right: 0;
   overflow: scroll;
+  color: darkred;
 }
 
 #env, #store {
