@@ -11,7 +11,7 @@ Write some lettuce in the [online playground](https://mrjacobbloom.github.io/pat
 
 ## Incompatibilities
 
-I've made a couple changes to the language:
+I've made a handful of minor changes to the language:
 
 - The identifiers in let bindings and function declarations are stored as
   `Ident`s instead of plain old strings. This is done to store their location
@@ -21,6 +21,7 @@ I've made a couple changes to the language:
 - `let` automagically works the same as `letrec` if the first expression is a
   function definition. This could actually change the functionality of some
   programs... hm.......
+- `// line comments` are allowed.
 
 ## Testing
 

@@ -8,6 +8,7 @@ const lexer = moo.compile({
     match: /[ \t\n]+/,
     lineBreaks: true
   },
+  comment: /\/\/.*/,
   number: /(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?[fFdD]?/,
   keyword: ['exp', 'log', 'sin', 'cos'], // allows for cosx
   identifier: {
@@ -119,6 +120,8 @@ ConstNum ->
 Ident -> %identifier  {% t => d.Ident(t[0].text).setLoc(t[0]) %}
 
 _o ->
-  _      {% nuller %}
-| null   {% nuller %}
-_ -> %ws {% nuller %}
+  _               {% nuller %}
+| null            {% nuller %}
+_ ->
+  %ws             {% nuller %}
+| _o %comment _o  {% nuller %}

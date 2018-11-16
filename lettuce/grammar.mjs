@@ -10,6 +10,7 @@ const lexer = moo.compile({
     match: /[ \t\n]+/,
     lineBreaks: true
   },
+  comment: /\/\/.*/,
   number: /(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?[fFdD]?/,
   keyword: ['exp', 'log', 'sin', 'cos'], // allows for cosx
   identifier: {
@@ -121,7 +122,8 @@ let ParserRules = [
     {"name": "Ident", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)], "postprocess": t => d.Ident(t[0].text).setLoc(t[0])},
     {"name": "_o", "symbols": ["_"], "postprocess": nuller},
     {"name": "_o", "symbols": [], "postprocess": nuller},
-    {"name": "_", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": nuller}
+    {"name": "_", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": nuller},
+    {"name": "_", "symbols": ["_o", (lexer.has("comment") ? {type: "comment"} : comment), "_o"], "postprocess": nuller}
 ];
 let ParserStart = "TopLevel";
 export default { Lexer, ParserRules, ParserStart };

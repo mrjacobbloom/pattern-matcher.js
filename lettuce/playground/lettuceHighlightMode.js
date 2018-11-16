@@ -8,6 +8,10 @@ const rules = {
       regex: /[ \t\n]+/
     },
     {
+      token: 'comment.line',
+      regex: /\/\/.*/
+    },
+    {
       token: 'constant.numeric',
       regex: /(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+-]?\d+)?[fFdD]?/
     },
