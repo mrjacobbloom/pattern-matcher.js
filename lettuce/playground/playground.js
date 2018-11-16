@@ -52,7 +52,10 @@ let renderEnv = (env, store) => {
 }
 
 let tree = {
-  deselectFunc: null,
+  deselectFuncs: [],
+  deselect: () => {
+    while(tree.deselectFuncs.length) tree.deselectFuncs.pop()();
+  },
   nodeMap: [],
   selectNodeInSource: node => {
     let loc = JSON.parse(node.getAttribute('data-loc'));
@@ -62,18 +65,18 @@ let tree = {
     // seems like this successfully doesn't mess with other selections
     // even when they overlap or contain the new range! Good work, ace
     editor.addSelectionMarker(range);
-    return () => editor.removeSelectionMarker(range);
+    tree.deselectFuncs.push(() => editor.removeSelectionMarker(range));
   },
   highlightNode: term => {
     document.querySelectorAll('.rendered-tree-node.highlight').forEach(node => node.classList.remove('highlight'));
-    if(tree.deselectFunc) tree.deselectFunc();
+    tree.deselect();
     if(term) {
       let nodeID = tree.nodeMap.indexOf(term);
       if(nodeID == -1) return;
       let node = document.querySelector(`#rendered-tree div[data-node-id="${nodeID}"]`);
       if(!node) return;
       node.classList.add('highlight');
-      tree.deselectFunc = tree.selectNodeInSource(node);
+      tree.selectNodeInSource(node);
     }
   },
   render: ast => {
@@ -178,7 +181,7 @@ let parser = {
 let sourceUpdated = () => {
   let data = editor.getValue();
   logErr();
-  if(tree.deselectFunc) tree.deselectFunc();
+  tree.deselect();
   playStates.set(playStates.STATES.PAUSE);
   setErrSource(data);
   try {
@@ -239,7 +242,7 @@ window.addEventListener('load', () => {
   editor.session.on('change', sourceUpdated);
   editor.session.setMode(lettuceHighlightMode);
   defaultProgramsSelect.addEventListener('change', () => {
-    if(tree.deselectFunc) tree.deselectFunc();
+    tree.deselect();
     editor.session.setValue(defaultProgramsSelect.value);
   })
 
@@ -247,8 +250,8 @@ window.addEventListener('load', () => {
   tree.elem = document.querySelector('#rendered-tree');
   tree.elem.addEventListener('mouseover', e => {
     if(e.target.hasAttribute('data-loc')) {
-      tree.deselectFunc = tree.selectNodeInSource(e.target);
-      e.target.addEventListener('mouseout', tree.deselectFunc, {once: true})
+      tree.selectNodeInSource(e.target);
+      e.target.addEventListener('mouseout', tree.deselect, {once: true})
     }
   });
   sourceUpdated();
