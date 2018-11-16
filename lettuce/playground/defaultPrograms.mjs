@@ -2,16 +2,16 @@ export default {
 'Fibonacci':
 `// Because every language needs an
 // implemntation of the Fibonacci sequence
-letrec fib = function(x)
+letrec fibonacci = function(x)
     if x <= 0 then
         0
     else if x == 1 then
         1
     else
-        fib(x-1) + fib(x-2)
+        fibonacci(x-1) + fibonacci(x-2)
         // @todo: memoizing
         // (jk that sounds hard)
-in fib(3)`,
+in fibonacci(3)`,
 
 'Factorial':
 `// Because every language needs an
