@@ -151,7 +151,12 @@ let interpreter = {
         return;
       }
     } catch(err) {
-      logErr(err)
+      tree.deselect();
+      tree.highlightNode(null);
+      renderEnv(null, null);
+      interpreter.stepFunc = null;
+      playStates.set(playStates.STATES.PAUSE);
+      logErr(err);
     }
   },
   genStepFunc: result => {
