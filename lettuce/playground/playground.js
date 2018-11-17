@@ -244,6 +244,7 @@ window.addEventListener('load', () => {
   }
   document.querySelector('#editor').textContent = defaultProgramsSelect.value;
   editor = ace.edit('editor');
+  editor.setTheme('ace/theme/sqlserver');
   editor.session.on('change', sourceUpdated);
   editor.session.setMode(lettuceHighlightMode);
   defaultProgramsSelect.addEventListener('change', () => {
