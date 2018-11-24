@@ -4,7 +4,7 @@ let astToNodeTree = (ast, nodeMap) => {
   let children = emptyarr, loc = emptyloc, name;
   if(ast.nodeClass) {
     loc = ast.loc;
-    name = ast.termName;
+    name = ast.className;
     if(ast[Symbol.iterator]) {
       if(ast.length == 1 && ["string", "number", "boolean"].includes(typeof ast[0])) {
         // special case for wrappers of JS values
