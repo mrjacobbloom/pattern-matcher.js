@@ -1,17 +1,17 @@
-import {Term, PatternMatcher, Types} from './pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, Types} from './pattern-matcher.mjs';
 
-let Expr = new Term('Expr').setAbstract();
-let Const = new Term('Const', [Number]).extends(Expr);
-let Ident = new Term('Ident', [String]).extends(Expr);
-let Plus = new Term('Plus', [Expr, Types.list(Expr, 1)]).extends(Expr);
-let Minus = new Term('Minus', [Expr, Types.list(Expr, 1)]).extends(Expr);
-let Mult = new Term('Mult', [Expr, Types.list(Expr, 1)]).extends(Expr);
-let Div = new Term('Div', [Expr, Expr]).extends(Expr);
-let Negate = new Term('Negate', [Expr]).extends(Expr);
-let Log = new Term('Log', [Expr]).extends(Expr);
-let Exp = new Term('Exp', [Expr]).extends(Expr);
-let Sine = new Term('Sine', [Expr]).extends(Expr);
-let Cosine = new Term('Cosine', [Expr]).extends(Expr);
+let Expr = new NodeClass('Expr').setAbstract();
+let Const = new NodeClass('Const', [Number]).extends(Expr);
+let Ident = new NodeClass('Ident', [String]).extends(Expr);
+let Plus = new NodeClass('Plus', [Expr, Types.list(Expr, 1)]).extends(Expr);
+let Minus = new NodeClass('Minus', [Expr, Types.list(Expr, 1)]).extends(Expr);
+let Mult = new NodeClass('Mult', [Expr, Types.list(Expr, 1)]).extends(Expr);
+let Div = new NodeClass('Div', [Expr, Expr]).extends(Expr);
+let Negate = new NodeClass('Negate', [Expr]).extends(Expr);
+let Log = new NodeClass('Log', [Expr]).extends(Expr);
+let Exp = new NodeClass('Exp', [Expr]).extends(Expr);
+let Sine = new NodeClass('Sine', [Expr]).extends(Expr);
+let Cosine = new NodeClass('Cosine', [Expr]).extends(Expr);
 
 let evalExpr = new PatternMatcher(env => [
   [Const(Number), ([num]) => num],
@@ -48,15 +48,15 @@ let evalExpr = new PatternMatcher(env => [
   [Cosine(Expr), ([e]) => Math.cos(evalExpr(e, env))],
 ]);
 
-let CondExpr = new Term('CondExpr').setAbstract();
-let ConstTrue = new Term('ConstTrue').extends(CondExpr);
-let ConstFalse = new Term('ConstFalse').extends(CondExpr);
-let Geq = new Term('Geq', [Expr, Expr]).extends(CondExpr);
-let Leq = new Term('Leq', [Expr, Expr]).extends(CondExpr);
-let Eq = new Term('Eq', [Expr, Expr]).extends(CondExpr);
-let And = new Term('And', [CondExpr, CondExpr]).extends(CondExpr);
-let Or = new Term('Or', [CondExpr, CondExpr]).extends(CondExpr);
-let Not = new Term('Not', [CondExpr]).extends(CondExpr);
+let CondExpr = new NodeClass('CondExpr').setAbstract();
+let ConstTrue = new NodeClass('ConstTrue').extends(CondExpr);
+let ConstFalse = new NodeClass('ConstFalse').extends(CondExpr);
+let Geq = new NodeClass('Geq', [Expr, Expr]).extends(CondExpr);
+let Leq = new NodeClass('Leq', [Expr, Expr]).extends(CondExpr);
+let Eq = new NodeClass('Eq', [Expr, Expr]).extends(CondExpr);
+let And = new NodeClass('And', [CondExpr, CondExpr]).extends(CondExpr);
+let Or = new NodeClass('Or', [CondExpr, CondExpr]).extends(CondExpr);
+let Not = new NodeClass('Not', [CondExpr]).extends(CondExpr);
 
 let evalCondExpr = new PatternMatcher(env => [
   [ConstTrue, () => ConstTrue],
@@ -105,16 +105,16 @@ let evalCondExpr = new PatternMatcher(env => [
 
 
 
-let Statement = new Term('Statement').setAbstract();
-let Assign = new Term('Assign', [String, Expr]).extends(Statement);
-let While = new Term('While', [CondExpr, Statement.list]).extends(Statement);
-let IfThenElse = new Term('IfThenElse', [CondExpr, Statement.list, Statement.list]).extends(Statement); // idk what 2 rest params of the same type even means??
-let ReturnStmt = new Term('ReturnStmt', [Expr]).extends(Statement);
+let Statement = new NodeClass('Statement').setAbstract();
+let Assign = new NodeClass('Assign', [String, Expr]).extends(Statement);
+let While = new NodeClass('While', [CondExpr, Statement.list]).extends(Statement);
+let IfThenElse = new NodeClass('IfThenElse', [CondExpr, Statement.list, Statement.list]).extends(Statement); // idk what 2 rest params of the same type even means??
+let ReturnStmt = new NodeClass('ReturnStmt', [Expr]).extends(Statement);
 
-let Case = new Term('Case').setAbstract();
-let SwitchCase = new Term('SwitchCase', [Expr, Statement.list]).extends(Case);
-let DefaultCase = new Term('DefaultCase', [Statement.list]).extends(Case);
-let Switch = new Term('Switch', [Expr, Case.list]).extends(Statement);
+let Case = new NodeClass('Case').setAbstract();
+let SwitchCase = new NodeClass('SwitchCase', [Expr, Statement.list]).extends(Case);
+let DefaultCase = new NodeClass('DefaultCase', [Statement.list]).extends(Case);
+let Switch = new NodeClass('Switch', [Expr, Case.list]).extends(Statement);
 
 let evalCase = new PatternMatcher((valueToMatch, env) => [
   [SwitchCase, ([e, statements]) => {
@@ -162,7 +162,7 @@ let evalStatement = new PatternMatcher(env => [
   }],
 ]);
 
-let VarDecl = new Term('VarDecl', [String, Expr]);
+let VarDecl = new NodeClass('VarDecl', [String, Expr]);
 let evalVarDecl = new PatternMatcher(env => [ // this feels like overkill lol
   [VarDecl(String, Expr), ([ident, expr]) => {
     if(env.has(ident)) throw new Error(`Identifier ${ident} already declared`);
@@ -170,7 +170,7 @@ let evalVarDecl = new PatternMatcher(env => [ // this feels like overkill lol
   }],
 ]);
 
-let Program = new Term('Program', [VarDecl.list, Statement.list, ReturnStmt])
+let Program = new NodeClass('Program', [VarDecl.list, Statement.list, ReturnStmt])
 
 let evalProgram = function(program) {
   let env = new Map();

@@ -7,7 +7,7 @@ The code's getting prettier but it's still got a ways to go before it'd be
 suitable for use in any kind of production environment. It uses a number of
 Proxies and fakeout constructors to hack JavaScript syntax. Some of the hacking
 could probably be removed if I wasn't so attached to the `new` keyword. But I
-think `new Term(...)` is prettier than `genTerm(...)` so that's what I went
+think `new NodeClass(...)` is prettier than `genClass(...)` so that's what I went
 with.
 
 ## The files
@@ -27,134 +27,132 @@ with.
 
 These API docs are written in a kind of pseudo-TypeScript that I hope y'all won't find too confusing. 😅
 
-- [`Term`](#term)
-  - [`new Term(type: string[, argTypes: Array.<Term|Any>])`](#new-termtype-string-argtypes-arraytermany)
-  - [`myTerm(...args): TermInstance`](#mytermargs-terminstance)
-  - [`myTerm.setArgTypes(argTypes: Array.<Term|Any>): Term`](#mytermsetargtypesargtypes-arraytermany-term)
-  - [`myTerm.setAbstract(isAbstract: boolean = true): Term`](#mytermsetabstractisabstract-boolean--true-term)
-  - [`myTerm.extends(supertype: Term): Term`](#mytermextendssupertype-term-term)
-  - [`myTerm.matches(pattern: Term|TermInstance|Any): boolean`](#mytermmatchespattern-termterminstanceany-boolean)
-  - [`myTerm.termName: string`](#mytermtermname-string)
-  - [`myTerm.list: Types.List`](#mytermlist-typeslist)
-- [`TermInstance`](#terminstance)
-  - [`myTermInstance.matches(pattern: Term|TermInstance|Any): boolean`](#myterminstancematchespattern-termterminstanceany-boolean)
-  - [`myTermInstance.setLoc(start: TermInstance|MooToken[, end: TermInstance|MooToken]): TermInstance`](#myterminstancesetlocstart-terminstancemootoken-end-terminstancemootoken-terminstance)
-  - [`myTermInstance.loc: [[number, number], [number, number]]`](#myterminstanceloc-number-number-number-number)
-  - [`myTermInstance.term: Term`](#myterminstanceterm-term)
-  - [`myTermInstance.termName: string`](#myterminstancetermname-string)
+- [`NodeClass`](#nodeclass)
+  - [`new NodeClass(type: string[, argTypes: Array.<NodeClass|Any>])`](#new-nodeclasstype-string-argtypes-arraynodeclassany)
+  - [`myClass(...args): NodeInstance`](#myclassargs-nodeinstance)
+  - [`myClass.setArgTypes(argTypes: Array.<NodeClass|Any>): NodeClass`](#myclasssetargtypesargtypes-arraynodeclassany-nodeclass)
+  - [`myClass.setAbstract(isAbstract: boolean = true): NodeClass`](#myclasssetabstractisabstract-boolean--true-nodeclass)
+  - [`myClass.extends(supertype: NodeClass): NodeClass`](#myclassextendssupertype-nodeclass-nodeclass)
+  - [`myClass.matches(pattern: NodeClass|NodeInstance|Any): boolean`](#myclassmatchespattern-nodeclassnodeinstanceany-boolean)
+  - [`myClass.className: string`](#myclassclassname-string)
+  - [`myClass.list: Types.List`](#myclasslist-typeslist)
+- [`NodeInstance`](#nodeinstance)
+  - [`myNodeInstance.matches(pattern: NodeClass|NodeInstance|Any): boolean`](#mynodeinstancematchespattern-nodeclassnodeinstanceany-boolean)
+  - [`myNodeInstance.setLoc(start: NodeInstance|MooToken[, end: NodeInstance|MooToken]): NodeInstance`](#mynodeinstancesetlocstart-nodeinstancemootoken-end-nodeinstancemootoken-nodeinstance)
+  - [`myNodeInstance.loc: [[number, number], [number, number]]`](#mynodeinstanceloc-number-number-number-number)
+  - [`myNodeInstance.nodeClass: NodeClass`](#mynodeinstancenodeclass-nodeclass)
+  - [`myNodeInstance.className: string`](#mynodeinstanceclassname-string)
 - [`PatternMatcher`](#patternmatcher)
 - [`Types`](#types)
-  - [`Types.matches(pattern: TermInstance|Term|Any, input: Any) boolean`](#typesmatchespattern-terminstancetermany-input-any-boolean)
+  - [`Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any) boolean`](#typesmatchespattern-nodeinstancenodeclassany-input-any-boolean)
   - [`Types.validate(termInstance): void`](#typesvalidateterminstance-void)
   - [`Types.any` (alias: `_`)](#typesany-alias-_)
-  - [`Types.list(type: Term|TermInstace|Any , min=0, max=Infinity): Types.List` (alias: `myTerm.list`)](#typeslisttype-termterminstaceany--min0-maxinfinity-typeslist-alias-mytermlist)
+  - [`Types.list(type: NodeClass|NodeInstance|Any , min=0, max=Infinity): Types.List` (alias: `myClass.list`)](#typeslisttype-nodeclassnodeinstanceany--min0-maxinfinity-typeslist-alias-myclasslist)
 - [`ScopedMap`](#scopedmap)
 
 
-### `Term`
 
-A `Term` represents a type, either terminal or nonterminal.
+### `NodeClass`
 
-#### `new Term(type: string[, argTypes: Array.<Term|Any>])`
+A `NodeClass` represents a type, either terminal or nonterminal.
 
-The `Term` constructor creates a type which can later be initialized. It takes 2
+#### `new NodeClass(type: string[, argTypes: Array.<NodeClass|Any>])`
+
+The `NodeClass` constructor creates a type which can later be initialized. It takes 2
 arguments, the name of the type (for error logging) and (optionally) an array of
-types it takes as arguments. The types can either be other `Term`s, or anything
+types it takes as arguments. The types can either be other `NodeClass`s, or anything
 else. For example, you might have a type that wraps native JS numbers or
 strings. You can also change the argument types later. Note that if you leave
 the second argument blank, it defaults to no arguments being valid.
 
-The returned `Term` object represents a type. It can be called like a function
-to return a `TermInstance`. Note that, in many places, the term iself can be
-used in place of a `TermInstance` if you want to save yourself a pair of
+The returned `NodeClass` object represents a type. It can be called like a function
+to return a `NodeInstance`. Note that, in many places, the class iself can be
+used in place of a `NodeInstance` if you want to save yourself a pair of
 parentheses.
 
 ```javascript
-import {Term} from './pattern-matcher.mjs';
-let myType = new Term('myType');
-let myTermInstance = myType();
+import {NodeClass} from './pattern-matcher.mjs';
+let myClass = new NodeClass('myClass');
+let myNodeInstance = myClass();
 ```
 
-#### `myTerm(...args): TermInstance`
+#### `myClass(...args): NodeInstance`
 
-When you call a `Term` object as a function, it returns a `TermInstance`, which
+When you call a `NodeClass` object as a function, it returns a `NodeInstance`, which
 is an array-like structure that stores the arguments passed.
 
-#### `myTerm.setArgTypes(argTypes: Array.<Term|Any>): Term`
+#### `myClass.setArgTypes(argTypes: Array.<NodeClass|Any>): NodeClass`
 
-Set the list of argument types accepted by the term. Allows for recursion I
-guess. The types can either be other `Term`s, or anything else. For example, you
+Set the list of argument types accepted by the class. Allows for recursion I
+guess. The types can either be other `NodeClass`s, or anything else. For example, you
 might have a type that wraps native JS numbers or strings.
 
-Returns the Term so it can be riskily chained with the constructor.
+Returns the NodeClass so it can be riskily chained with the constructor.
 
-#### `myTerm.setAbstract(isAbstract: boolean = true): Term`
+#### `myClass.setAbstract(isAbstract: boolean = true): NodeClass`
 
-Set the term abstract. This means it can be subclassed but cannot itself be
+Set the class abstract. This means it can be subclassed but cannot itself be
 instantiated (it won't throw until it's validated, which happens later).
 
 ```javascript
-let myType = new Term('myType');
-myType(); // TermInstance
-
-let myType2 = new Term('myType2').setAbstract();
-Types.validate(myType2()); // throws
-myType2.setAbstract(false); // I guess you could do this?
-Types.validate(myType2()); // TermInstance
+let myClass = new NodeClass('myClass').setAbstract();
+Types.validate(myClass()); // throws
+myClass.setAbstract(false); // I guess you could do this?
+Types.validate(myClass()); // works!
 ```
 
-Returns the Term so it can be riskily chained with the constructor.
+Returns the NodeClass so it can be riskily chained with the constructor.
 
-#### `myTerm.extends(supertype: Term): Term`
+#### `myClass.extends(supertype: NodeClass): NodeClass`
 
-Sets the term as a subtype of the given supertype.
+Sets the class as a subtype of the given supertype.
 
 ```javascript
-let mySupertype = new Term('mySupertype').setAbstract();
-let sub1 = new Term('sub1', [mySupertype]).extends(mySupertype);
-let sub2 = new Term('sub2', []).extends(mySupertype);
+let mySupertype = new NodeClass('mySupertype').setAbstract();
+let sub1 = new NodeClass('sub1', [mySupertype]).extends(mySupertype);
+let sub2 = new NodeClass('sub2', []).extends(mySupertype);
 
 sub1(sub1(sub2)); // checks out
 ```
 
-Returns the Term so it can be riskily chained with the constructor.
+Returns the NodeClass so it can be riskily chained with the constructor.
 
-#### `myTerm.matches(pattern: Term|TermInstance|Any): boolean`
+#### `myClass.matches(pattern: NodeClass|NodeInstance|Any): boolean`
 
-Returns whether myTerm matches the given pattern.
+Returns whether myClass matches the given pattern.
 
-#### `myTerm.termName: string`
+#### `myClass.className: string`
 
-The string representation of the term name given in the constructor. Used for
+The string representation of the name given in the constructor. Used for
 error logging and such.
 
-#### `myTerm.list: Types.List`
+#### `myClass.list: Types.List`
 
-Alias for `Types.list(myTerm)` -- which means the pattern expects an array of
-`myTerm`s (see `Types.list` below).
+Alias for `Types.list(myClass)` -- which means the pattern expects an array of
+`myClass`s (see `Types.list` below).
 
-### `TermInstance`
+### `NodeInstance`
 
-A `TermInstance` is the value returned when you call a `Term` as a function. It
+A `NodeInstance` is the value returned when you call a `NodeClass` as a function. It
 stores the set of arguments passed to it and is array-like which makes it easily destructurable in a `PatternMatcher`.
 
 ```javascript
-let myType = new Term('myType');
-let myTermInstance = myType();
+let myClass = new NodeClass('myClass');
+let myNodeInstance = myClass();
 ```
 
-#### `myTermInstance.matches(pattern: Term|TermInstance|Any): boolean`
+#### `myNodeInstance.matches(pattern: NodeClass|NodeInstance|Any): boolean`
 
-Returns whether myTermInstance matches the given pattern.
+Returns whether myNodeInstance matches the given pattern.
 
-#### `myTermInstance.setLoc(start: TermInstance|MooToken[, end: TermInstance|MooToken]): TermInstance`
+#### `myNodeInstance.setLoc(start: NodeInstance|MooToken[, end: NodeInstance|MooToken]): NodeInstance`
 
-In order to keep track of how terms relate to their source text, `TermInstance`s
+In order to keep track of how nodes relate to their source text, `NodeInstance`s
 have a function `setLoc()` which accepts first and last tokens as either:
 
 - [moo](https://github.com/no-context/moo) token objects (as in, it expects the
   properties `line`, `col`, and `text`)
-- other `TermInstance`s
+- other `NodeInstance`s
 
 This would ideally be set while parsing and can be used later when throwing
 errors and things.
@@ -164,35 +162,35 @@ errors and things.
 FooBar -> "foo" %identifier "bar" { % t => FooBar(t[1]).setLoc(t[0], t[2]) % }
 ```
 
-Returns the TermInstance so it can be riskily chained during instantiation.
+Returns the NodeInstance so it can be riskily chained during instantiation.
 
-#### `myTermInstance.loc: [[number, number], [number, number]]`
+#### `myNodeInstance.loc: [[number, number], [number, number]]`
 
-Represents the location of the term insource text.
+Represents the location of the node in source text.
 Has the form `[[start_line, start_column], [end_line, end_column]]`. Note that
 moo line and column numbers are 1-indexed.
 
-#### `myTermInstance.term: Term`
+#### `myNodeInstance.nodeClass: NodeClass`
 
-The `Term` of which the `TermInstance` is an instance.
+The `NodeClass` of which the `NodeInstance` is an instance.
 
-#### `myTermInstance.termName: string`
+#### `myNodeInstance.className: string`
 
-The string representation of the term name given in the `Term`'s constructor.
+The string representation of the name given in the `NodeClass`'s constructor.
 Used for error logging and such.
 
 ### `PatternMatcher`
 
 The `PatternMatcher` constructor takes an array of 2-item arrays of patterns to
 match and functions to call in those cases. The functions are passed the matching
-`TermInstance`, which is Array-like and easily destructurable:
+`NodeInstance`, which is Array-like and easily destructurable:
 
 ```javascript
-import {Term, PatternMatcher} from './pattern-matcher.mjs';
+import {NodeClass, PatternMatcher} from './pattern-matcher.mjs';
 
-let NumList = new Term('NumList').setAbstract();
-let Nil = new Term('Nil').extends(NumList);
-let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
+let NumList = new NodeClass('NumList').setAbstract();
+let Nil = new NodeClass('Nil').extends(NumList);
+let Cons = new NodeClass('Cons', [Number, NumList]).extends(NumList);
 
 let isZigZag = new PatternMatcher([
   [Nil, () => {
@@ -220,12 +218,12 @@ and gets numbers. It passes the variable "env" around, which is a map of
 variable identifiers to values:
 
 ```javascript
-let Expression = new Term('Expression').setAbstract();
-let Constant = new Term('Constant', [Number]).extends(Expression);
-let Get = new Term('Get', [String]).extends(Expression);
-let Store = new Term('Store', [String, Expression]).extends(Expression);
-let Print = new Term('Print', [String]).extends(Expression);
-let Program = new Term('Program', [Expression.list]);
+let Expression = new NodeClass('Expression').setAbstract();
+let Constant = new NodeClass('Constant', [Number]).extends(Expression);
+let Get = new NodeClass('Get', [String]).extends(Expression);
+let Store = new NodeClass('Store', [String, Expression]).extends(Expression);
+let Print = new NodeClass('Print', [String]).extends(Expression);
+let Program = new NodeClass('Program', [Expression.list]);
 
 let evalExpr = new PatternMatcher(env => [
   [Constant(Number), ([num]) => {
@@ -258,21 +256,22 @@ let myProgram = Program([
 evalProgram(myProgram);
 ```
 
-Note that those passed values are proxied. If you don't want that, the
-alternative is for each of the match callbacks to accept the parameters instead.
-Thus, the following PatternMatchers are basically equivalent:
+Note that those passed values are proxied, which means they'll break for numbers,
+strings, and bools. If you don't want that, the alternative is for each of the
+match callbacks to accept the parameters instead. Thus, the following
+PatternMatchers are basically equivalent:
 
 ```javascript
 let foo = new PatternMatcher((a, b) => [
- [myTerm, term => console.log(a)]
+ [myClass, node => console.log(a)]
 ]);
 
 let bar = new PatternMatcher([
- [myTerm, (term, a, b) => console.log(a)]
+ [myClass, (node, a, b) => console.log(a)]
 ]);
 
 // Note that the syntax is:
-patterMatcher(term, ...proxiedArgs, ...passedDirectlyToMatchCallback)
+patterMatcher(node, ...proxiedArgs, ...passedDirectlyToMatchCallback)
 // where the number of arguments that get "proxied" is based on the number of
 // arguments that the map-returning function (the one passed directly to the
 // PatternMatcher function) expects
@@ -284,9 +283,9 @@ continue on to the next pattern. For example, here's an implementation of a BST.
 Note that the if guard comes before the callback:
 
 ```javascript
-let NumTree = new Term('NumTree').setAbstract();
-let Leaf = new Term('Leaf').extends(NumTree);
-let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
+let NumTree = new NodeClass('NumTree').setAbstract();
+let Leaf = new NodeClass('Leaf').extends(NumTree);
+let Node = new NodeClass('Node', [Number, NumTree, NumTree]).extends(NumTree);
 
 let insert = new PatternMatcher(newNum => [
   [Leaf, () => Node(newNum.n, Leaf, Leaf)],
@@ -301,13 +300,11 @@ insert(mytree, {n:5});
 // Node(10, Node(8, Node(5, Leaf, Leaf), Leaf), Node(15, Leaf, Node(23, Leaf, Leaf)))
 ```
 
-@TODO: explore casting to Number, String, etc and maybe it'll mostly work?
-
 ### `Types`
 
 `Types` is an object containing a few things that help with types.
 
-#### `Types.matches(pattern: TermInstance|Term|Any, input: Any) boolean`
+#### `Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any) boolean`
 
 Returns whether the two things match (in type, not necessarily in value). The
 left side is the pattern/expected value and the right term is the input/actual
@@ -315,7 +312,7 @@ value.
 
 #### `Types.validate(termInstance): void`
 
-Make sure all the arguments' types line up with the Term's expected types. 
+Make sure all the arguments' types line up with the NodeClass's expected types. 
 Doesn't return anything, but throws if types ton't line up with what's expected.
 This is automatically called at the start of every `PatternMatcher` call.
 
@@ -325,12 +322,12 @@ Object representing any type. You'll probably want to use a supertype instead.
 You can also do `Types.any.list` (or `_.list`) as an alias for
 `Types.list(Types.any)`.
 
-#### `Types.list(type: Term|TermInstace|Any , min=0, max=Infinity): Types.List` (alias: `myTerm.list`)
+#### `Types.list(type: NodeClass|NodeInstance|Any , min=0, max=Infinity): Types.List` (alias: `myClass.list`)
 
 Put this in any list of argument types or in a pattern to match against, it
 means "expect an array of `type`s of size `min`-`max` (inclusive)".
 
-You can also use the shortcut `myTerm.list`.
+You can also use the shortcut `myClass.list`.
 
 ### `ScopedMap`
 

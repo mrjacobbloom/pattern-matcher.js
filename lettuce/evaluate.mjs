@@ -1,10 +1,10 @@
-import {Term, PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
 import {LettuceStore} from './store.mjs'
 import * as err from './errors.mjs';
 import * as d from './definitions.mjs';
 import * as v from './values.mjs';
 
-let ValueTuple = new Term('ValueTuple', [v.Value, v.Value, d.Eq]);
+let ValueTuple = new NodeClass('ValueTuple', [v.Value, v.Value, d.Eq]);
 
 
 let GLOBALS = Symbol('GLOBALS');
@@ -59,8 +59,8 @@ let cps_map = (list, mapfunc, callback) => {
 /**
  * Evaluates the expressions, unwraps them with unwrapFunc, then call the
  * callback with the unwrapped values. It's like, Monads or something.
- * @param {Term|Expr[]} exprs Array of expressions to unwrap and pass to
- *  callback. Heck, just pass the whole termInstance, see if I care.
+ * @param {NodeInstance|Expr[]} exprs Array of expressions to unwrap and pass to
+ *  callback. Heck, just pass the whole NodeInstance, see if I care.
  * @param {ScopedMap} env 
  * @param {LettuceStore} store 
  * @param {Function} unwrapFunc 

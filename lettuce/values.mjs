@@ -1,12 +1,12 @@
-import {Term, PatternMatcher, Types, _, ScopedMap} from '../pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, Types, _, ScopedMap} from '../pattern-matcher.mjs';
 import {Expr} from './definitions.mjs';
 import {LettuceTypeConversionError} from './errors.mjs'
 
-export let Value = new Term('Value').setAbstract();
-export let NumValue = new Term('NumValue', [Number]).extends(Value);
-export let BoolValue = new Term('BoolValue', [Boolean]).extends(Value);
-export let Closure = new Term('Closure', [Types.list(String), Expr, ScopedMap]).extends(Value);
-export let Reference = new Term('Reference', [Number]).extends(Value);
+export let Value = new NodeClass('Value').setAbstract();
+export let NumValue = new NodeClass('NumValue', [Number]).extends(Value);
+export let BoolValue = new NodeClass('BoolValue', [Boolean]).extends(Value);
+export let Closure = new NodeClass('Closure', [Types.list(String), Expr, ScopedMap]).extends(Value);
+export let Reference = new NodeClass('Reference', [Number]).extends(Value);
 
 export let valueToNum = new PatternMatcher(term => [
   [NumValue, ([f]) => f],

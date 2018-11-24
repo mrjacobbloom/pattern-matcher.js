@@ -3,13 +3,13 @@
  * got passed to it. Without something like this, JavaScript would finish
  * executing each argument before passing anything to the surrounding call.
  */
-class TermInstance extends Array {
-  constructor(term, args = []) {
+class NodeInstance extends Array {
+  constructor(nodeClass, args = []) {
     super();
     this.push(...args); // because the Array constructor w/ 1 number is broken
-    this.term = term;
-    this._ancestors = term._ancestors;
-    this.termName = term.termName;
+    this.nodeClass = nodeClass;
+    this._ancestors = nodeClass._ancestors;
+    this.className = nodeClass.className;
     this.loc = [[-1, -1], [-1, -1]]; // [[start line, start col], [end line, end col]]
   }
   get list() {
@@ -19,7 +19,7 @@ class TermInstance extends Array {
     if(this.length) {
       let argStrings = this.map(arg => {
         let cls = Object(arg);
-        if(cls.termName) {
+        if(cls.className) {
           return arg.toString();
         } else {
           if(typeof cls == 'function') {
@@ -31,9 +31,9 @@ class TermInstance extends Array {
           }
         }
       });
-      return `${this.termName}(${argStrings.join(', ')})`;
+      return `${this.className}(${argStrings.join(', ')})`;
     } else {
-      return this.termName;
+      return this.className;
     }
   }
   /**
@@ -74,7 +74,7 @@ class TermInstance extends Array {
 }
 
 /**
- * Term here is our generic word for a terminal or nonterminal. They can
+ * NodeClass here is our generic word for a terminal or nonterminal. They can
  * arbitrarily extend each-other using a.extends(b) and you can declare them
  * abstract (i.e. not directly constructible, only subclassable) using
  * a.setAbstract()
@@ -88,25 +88,25 @@ class TermInstance extends Array {
  *   object and execute your own code instead of whatever JavaScript would
  *   usually do.
  * In this case, we create a Proxy around a function called this._apply so it
- * can be called like a function but otherwise behaves like our Term object.
+ * can be called like a function but otherwise behaves like our NodeClass object.
  * We do this because class constructors can't natively create objects that can
  * be called like functions.
  */
-export class Term {
-  constructor(termName, argTypes = []) {
-    this.termName = termName; // string representation, used in errors
+export class NodeClass {
+  constructor(className, argTypes = []) {
+    this.className = className; // string representation, used in errors
     this._self = this; // because Proxy is complicated
     this.argTypes = argTypes;
     this._isAbstract = false;
     this._genProxy();
-    this.term = this._proxy;
+    this.nodeClass = this._proxy;
     this._isTerm = true;
     this._ancestors = [this._proxy];
     return this._proxy; // if constructor returns an object that's what gets returned
   }
   _genProxy() {
     this._apply = (function(...args) {
-      return new TermInstance(this._proxy, args);
+      return new NodeInstance(this._proxy, args);
     }).bind(this);
     let handler = {
       get: (target, prop, receiver) => this[prop],
@@ -117,28 +117,28 @@ export class Term {
   /**
    * Set the arg types after the fact. This allows for things like
    * recursion without a supertype, though that might be a bad idea?
-   * @param {Array.<Term|any>} argTypes Array of types to expect
+   * @param {Array.<NodeClass|any>} argTypes Array of types to expect
    */
   setArgTypes(argTypes) {
     this._self.argTypes = argTypes;
     return this._proxy; // for chainability
   }
   /**
-   * Sets the term as a subtype of the given supertype.
+   * Sets the nodeClass as a subtype of the given supertype.
    * Is "extends" a reserved word? Whoopsie
-   * @param {Term} parent 
-   * @returns {Term} this (for risky chainability)
+   * @param {NodeClass} parent 
+   * @returns {NodeClass} this (for risky chainability)
    */
   extends(parent) {
     this._ancestors.push(...parent._ancestors);
     return this._proxy; // for chainability
   }
   /**
-   * Set a Term abstract, meaning it can be subclassed but never directly
+   * Set a NodeClass abstract, meaning it can be subclassed but never directly
    * constructed.
    * @param {boolean=true} isAbstract Uh in case you change your mind you can
    * theoretically pass false to explicitly set abstract to false.
-   * @returns {Term} this (for risky chainability)
+   * @returns {NodeClass} this (for risky chainability)
    */
   setAbstract(isAbstract = true) {
     this._self._isAbstract = isAbstract;
@@ -156,7 +156,7 @@ export class Term {
     return Types.list(this._proxy);
   }
   toString() {
-    return this.termName;
+    return this.className;
   }
 }
 
@@ -165,25 +165,10 @@ let unwrapped = Symbol('unwrapped');
 /**
  * This is the pattern-matching part. Not a real constructor, I just like `new`
  * over names like `genPatternMatcher` *shrug*
- * Either [term, callback] or [term, ifGuard, callback]
+ * Either [class, callback] or [class, ifGuard, callback]
  * If you pass it a function, the arguments of that function will be available
- * to the case callbacks. Note that the arguments are proxies. They'll work
- * fine for predicates or environment var maps, but if you want to pass, say, a
- * number, you'll have to wrap it in an object of some kind.
- * The remaining arguments are passed directly to the matched function. So
- * either of these notations will just work:
- * @example
- * ```
- * let foo = new PatternMatcher((a, b) => [
- *  [myTerm, term => console.log(a)]
- * ])
- * let bar = new PatternMatcher([
- *  [myTerm, (term, a, b) => console.log(a)]
- * ])
- * 
- * patterMatcher(term, ...proxiedArgs, ...passedDirectlyToMatchCallback)
- * ```
- * @param {Array.<[TermInstance, Function, Function=]> | () => Array.<[TermInstance, Function, Function=]>} termMap
+ * to the case callbacks.
+ * @param {Array.<[NodeInstance, Function, Function=]> | () => Array.<[NodeInstance, Function, Function=]>} termMap
  * @returns {Function} a glorified switch statement.
  */
 export class PatternMatcher {
@@ -313,14 +298,14 @@ export let Types = {
   /**
    * Indicates that one of several types are acceptable
    * (you might wanna use a supertype instead)
-   * @param {...Term} types The set of types being or'd
+   * @param {...NodeClass} types The set of types being or'd
    * @returns {Types.Or}
    */
   or: (...types) => new Types.Or(...types),
 
   /**
    * Indicates that several arguments of the type may be passed in an array
-   * @param {Term|any} type The repeatable type
+   * @param {NodeClass|any} type The repeatable type
    * @param {number=0} min The minimum number of repeats
    * @param {number=Infinity} max The maximum number of repeats
    * @returns {Types.List}
@@ -331,15 +316,15 @@ export let Types = {
    * Whether the two things match (in type, not necessarily in value). The left
    * side is the pattern/expected value and the right term is the input/actual
    * value. This is used internally by PatternMatcher.
-   * @param {TermInstance|Term|*} pattern
+   * @param {NodeInstance|NodeClass|*} pattern
    * @param {*} input
    * @returns {boolean}
    */
   matches: (pattern, input) => {
     if(pattern == Types.any) return true;
-    if(pattern && (pattern._isTerm || pattern instanceof TermInstance)) {
-      if(!input._isTerm && !(input instanceof TermInstance)) return false;
-      if (!input._ancestors.includes(pattern.term)) return false;
+    if(pattern && (pattern._isTerm || pattern instanceof NodeInstance)) {
+      if(!input._isTerm && !(input instanceof NodeInstance)) return false;
+      if (!input._ancestors.includes(pattern.nodeClass)) return false;
       if(pattern._isTerm) return true;
       if(input._isTerm) {
         return pattern.length === 0;
@@ -357,7 +342,7 @@ export let Types = {
         if(!Types.matches(pattern.type, listitem)) return false;
       }
       return true;
-    } else { // pattern not Term|TermInstance nor List
+    } else { // pattern not NodeClass|NodeInstance nor List
       switch(typeof input) {
         case "number": return pattern == Number;
         case "string": return pattern == String;
@@ -373,44 +358,44 @@ export let Types = {
   },
 
   /**
- * Validates whether the types match what's given in the term definitions.
+ * Validates whether the types match what's given in the nodeClass definitions.
  * Doesn't return anything, rather it throws if anything's wrong. Wrap it in a
  * try/catch if that's an issue for you
- * @param {TermInstance} term
+ * @param {NodeInstance} nodeInstance
  * @throws {TypeError}
  */
-  validate: (termInstance) => {
-    if(!termInstance.termName) return; // native type or something
-    if(termInstance._isTerm) {
-      termInstance = termInstance._apply(); // if it takes no args, you can leave out the parens
+  validate: (nodeInstance) => {
+    if(!nodeInstance.className) return; // native type or something
+    if(nodeInstance._isTerm) {
+      nodeInstance = nodeInstance._apply(); // if it takes no args, you can leave out the parens
     }
-    if(termInstance.term._isAbstract) {
-      throw new TypeError(`Abstract termInstance ${termInstance.termName} not directly constructable`);
+    if(nodeInstance.nodeClass._isAbstract) {
+      throw new TypeError(`Abstract NodeClass ${nodeInstance.className} not directly constructable`);
     }
-    if(termInstance.length != termInstance.term.argTypes.length) {
-      throw new RangeError(`${termInstance.termName} should take ${termInstance.term.argTypes.length} arguments (found ${termInstance.length})`);
+    if(nodeInstance.length != nodeInstance.nodeClass.argTypes.length) {
+      throw new RangeError(`${nodeInstance.className} should take ${nodeInstance.nodeClass.argTypes.length} arguments (found ${nodeInstance.length})`);
     }
-    for(let i = 0; i < termInstance.length; i++) {
-      let expectedType = termInstance.term.argTypes[i];
+    for(let i = 0; i < nodeInstance.length; i++) {
+      let expectedType = nodeInstance.nodeClass.argTypes[i];
 
-      let arg = termInstance[i];
+      let arg = nodeInstance[i];
 
       if(expectedType instanceof Types.List) {
         if(!Array.isArray(arg) || arg.length < expectedType.min || arg.length > expectedType.max) {
-          throw new RangeError(`Argument ${i} of ${termInstance.termName} must be an array of length ${expectedType.min} - ${expectedType.max} (inclusive)`);
+          throw new RangeError(`Argument ${i} of ${nodeInstance.className} must be an array of length ${expectedType.min} - ${expectedType.max} (inclusive)`);
         }
         let listType = expectedType.type;
         for(let listItem of arg) {
           let {matches, actualType} = argMatches(listItem, listType);
           if(!matches) {
-            throw new TypeError(`Argument ${i} of ${termInstance.termName} must be an array of ${listType.termName || listType.name || String(listType)} (found ${actualType})`);
+            throw new TypeError(`Argument ${i} of ${nodeInstance.className} must be an array of ${listType.className || listType.name || String(listType)} (found ${actualType})`);
           }
           Types.validate(listItem);
         }
       } else {
         let {matches, actualType} = argMatches(arg, expectedType);
         if(!matches) {
-          throw new TypeError(`Argument ${i} of ${termInstance.termName} must be of type ${expectedType.termName || expectedType.name || String(expectedType)} (found ${actualType})`);
+          throw new TypeError(`Argument ${i} of ${nodeInstance.className} must be of type ${expectedType.className || expectedType.name || String(expectedType)} (found ${actualType})`);
         }
         Types.validate(arg);
       }

@@ -1,9 +1,9 @@
-import {Term, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
 
 natural_numbers: { // break natural_numbers;
-  let NatNum = new Term('NatNum').setAbstract(); // #riskyChaining4Ever
-  let Z = new Term('Z').extends(NatNum);
-  let Succ = new Term('Succ', [NatNum]).extends(NatNum);
+  let NatNum = new NodeClass('NatNum').setAbstract(); // #riskyChaining4Ever
+  let Z = new NodeClass('Z').extends(NatNum);
+  let Succ = new NodeClass('Succ', [NatNum]).extends(NatNum);
 
   let getValue = new PatternMatcher([
     [Z, () => {
@@ -34,9 +34,9 @@ natural_numbers: { // break natural_numbers;
 }
 
 inductive_list: { // break inductive_list;
-  let NumList = new Term('NumList').setAbstract();
-  let Nil = new Term('Nil').extends(NumList);
-  let Cons = new Term('Cons', [Number, NumList]).extends(NumList);
+  let NumList = new NodeClass('NumList').setAbstract();
+  let Nil = new NodeClass('Nil').extends(NumList);
+  let Cons = new NodeClass('Cons', [Number, NumList]).extends(NumList);
 
   let toJSArray = new PatternMatcher([
     [Cons(Number, Nil), ([number]) => {
@@ -71,7 +71,7 @@ inductive_list: { // break inductive_list;
 }
 
 veriadic_list: { // break veriadic_list;
-  let List = new Term('List', [_.list]);
+  let List = new NodeClass('List', [_.list]);
   let toJSArray2 = new PatternMatcher([
     [List(_.list), ([items]) => items.map(toJSArray2)],
     [_, a => a], // default case
@@ -82,9 +82,9 @@ veriadic_list: { // break veriadic_list;
 }
 
 tree: { // break tree;
-  let NumTree = new Term('NumTree').setAbstract();
-  let Leaf = new Term('Leaf').extends(NumTree);
-  let Node = new Term('Node', [Number, NumTree, NumTree]).extends(NumTree);
+  let NumTree = new NodeClass('NumTree').setAbstract();
+  let Leaf = new NodeClass('Leaf').extends(NumTree);
+  let Node = new NodeClass('Node', [Number, NumTree, NumTree]).extends(NumTree);
 
   let depth = new PatternMatcher([
     [Leaf, () => 0],
@@ -134,12 +134,12 @@ tree: { // break tree;
 }
 
 map: { // break map
-  let Expression = new Term('Expression').setAbstract();
-  let Constant = new Term('Constant', [Number]).extends(Expression);
-  let Get = new Term('Get', [String]).extends(Expression);
-  let Store = new Term('Store', [String, Expression]).extends(Expression);
-  let Print = new Term('Print', [String]).extends(Expression);
-  let Program = new Term('Program', [Expression.list]);
+  let Expression = new NodeClass('Expression').setAbstract();
+  let Constant = new NodeClass('Constant', [Number]).extends(Expression);
+  let Get = new NodeClass('Get', [String]).extends(Expression);
+  let Store = new NodeClass('Store', [String, Expression]).extends(Expression);
+  let Print = new NodeClass('Print', [String]).extends(Expression);
+  let Program = new NodeClass('Program', [Expression.list]);
 
   let evalExpr = new PatternMatcher(env => [
     [Constant(Number), ([num]) => {

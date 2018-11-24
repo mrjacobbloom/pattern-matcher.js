@@ -2,7 +2,7 @@ const emptyloc = [[-1, -1], [-1, -1]];
 const emptyarr = [];
 let astToNodeTree = (ast, nodeMap) => {
   let children = emptyarr, loc = emptyloc, name;
-  if(ast.term) {
+  if(ast.nodeClass) {
     loc = ast.loc;
     name = ast.termName;
     if(ast[Symbol.iterator]) {

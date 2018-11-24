@@ -16,9 +16,9 @@ let logErr = (msg = '') => {
 let valueToHTML = value => {
   if(!value) return '';
   let v;
-  if(value.termName == 'Closure') {
+  if(value.className == 'Closure') {
     let [idents, expr, env] = value;
-    v = `Closure([${idents.toString()}], ${expr.termName}(...), Env)`;
+    v = `Closure([${idents.toString()}], ${expr.className}(...), Env)`;
   } else {
     v = value.toString();
   }
