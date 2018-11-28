@@ -10,7 +10,9 @@ could probably be removed if I wasn't so attached to the `new` keyword. But I
 think `new NodeClass(...)` is prettier than `genClass(...)` so that's what I went
 with.
 
-## The files
+I gave a presentation on this repo in my class: [[link]](https://docs.google.com/presentation/d/1WILaZ4DszKBVeiOUsmyxBdaxqeTNQKpVTq4OHLoTbtQ)
+
+## Navigating this repo
 
 - `pattern-matcher.mjs` is the library or whatever.
 - `driver.mjs` is a set of inductive implementations of various structures that
@@ -28,11 +30,11 @@ with.
 These API docs are written in a kind of pseudo-TypeScript that I hope y'all won't find too confusing. 😅
 
 - [`NodeClass`](#nodeclass)
-  - [`new NodeClass(type: string[, argTypes: Array.<NodeClass|Any>])`](#new-nodeclasstype-string-argtypes-arraynodeclassany)
+  - [`new NodeClass(className: string[, argTypes: Array.<NodeClass|Any>])`](#new-nodeclassclassname-string-argtypes-arraynodeclassany)
   - [`myClass(...args): NodeInstance`](#myclassargs-nodeinstance)
   - [`myClass.setArgTypes(argTypes: Array.<NodeClass|Any>): NodeClass`](#myclasssetargtypesargtypes-arraynodeclassany-nodeclass)
   - [`myClass.setAbstract(isAbstract: boolean = true): NodeClass`](#myclasssetabstractisabstract-boolean--true-nodeclass)
-  - [`myClass.extends(supertype: NodeClass): NodeClass`](#myclassextendssupertype-nodeclass-nodeclass)
+  - [`myClass.extends(superclass: NodeClass): NodeClass`](#myclassextendssuperclass-nodeclass-nodeclass)
   - [`myClass.matches(pattern: NodeClass|NodeInstance|Any): boolean`](#myclassmatchespattern-nodeclassnodeinstanceany-boolean)
   - [`myClass.className: string`](#myclassclassname-string)
   - [`myClass.list: Types.List`](#myclasslist-typeslist)
@@ -54,18 +56,18 @@ These API docs are written in a kind of pseudo-TypeScript that I hope y'all won'
 
 ### `NodeClass`
 
-A `NodeClass` represents a type, either terminal or nonterminal.
+A `NodeClass` represents a class of AST nodes.
 
-#### `new NodeClass(type: string[, argTypes: Array.<NodeClass|Any>])`
+#### `new NodeClass(className: string[, argTypes: Array.<NodeClass|Any>])`
 
-The `NodeClass` constructor creates a type which can later be initialized. It takes 2
-arguments, the name of the type (for error logging) and (optionally) an array of
-types it takes as arguments. The types can either be other `NodeClass`s, or anything
-else. For example, you might have a type that wraps native JS numbers or
+The `NodeClass` constructor creates a cllable class object which can later be initialized. It takes 2
+arguments, the name of the class (for error logging) and (optionally) an array of
+types it takes as arguments. The types can either be other `NodeClass`es, or anything
+else. For example, you might have a class that wraps native JS numbers or
 strings. You can also change the argument types later. Note that if you leave
 the second argument blank, it defaults to no arguments being valid.
 
-The returned `NodeClass` object represents a type. It can be called like a function
+The returned `NodeClass` object represents a class. It can be called like a function
 to return a `NodeInstance`. Note that, in many places, the class iself can be
 used in place of a `NodeInstance` if you want to save yourself a pair of
 parentheses.
@@ -84,8 +86,8 @@ is an array-like structure that stores the arguments passed.
 #### `myClass.setArgTypes(argTypes: Array.<NodeClass|Any>): NodeClass`
 
 Set the list of argument types accepted by the class. Allows for recursion I
-guess. The types can either be other `NodeClass`s, or anything else. For example, you
-might have a type that wraps native JS numbers or strings.
+guess. The types can either be other `NodeClass`es, or anything else. For example, you
+might have a class that wraps native JS numbers or strings.
 
 Returns the NodeClass so it can be riskily chained with the constructor.
 
@@ -103,16 +105,16 @@ Types.validate(myClass()); // works!
 
 Returns the NodeClass so it can be riskily chained with the constructor.
 
-#### `myClass.extends(supertype: NodeClass): NodeClass`
+#### `myClass.extends(superclass: NodeClass): NodeClass`
 
-Sets the class as a subtype of the given supertype.
+Sets the class as a subclass of the given superclass.
 
 ```javascript
-let mySupertype = new NodeClass('mySupertype').setAbstract();
-let sub1 = new NodeClass('sub1', [mySupertype]).extends(mySupertype);
-let sub2 = new NodeClass('sub2', []).extends(mySupertype);
+let mySuperclass = new NodeClass('mySuperclass').setAbstract();
+let sub1 = new NodeClass('sub1', [mySuperclass]).extends(mySuperclass);
+let sub2 = new NodeClass('sub2', []).extends(mySuperclass);
 
-sub1(sub1(sub2)); // checks out
+Types.validate(sub1(sub1(sub2))); // checks out
 ```
 
 Returns the NodeClass so it can be riskily chained with the constructor.
@@ -134,7 +136,8 @@ Alias for `Types.list(myClass)` -- which means the pattern expects an array of
 ### `NodeInstance`
 
 A `NodeInstance` is the value returned when you call a `NodeClass` as a function. It
-stores the set of arguments passed to it and is array-like which makes it easily destructurable in a `PatternMatcher`.
+generally represents an AST node. It stores the set of arguments passed to it
+and is array-like which makes it easily destructurable in a `PatternMatcher`.
 
 ```javascript
 let myClass = new NodeClass('myClass');
@@ -318,7 +321,7 @@ This is automatically called at the start of every `PatternMatcher` call.
 
 #### `Types.any` (alias: `_`)
 
-Object representing any type. You'll probably want to use a supertype instead.
+Object representing any type. You'll probably want to use a superclass instead.
 You can also do `Types.any.list` (or `_.list`) as an alias for
 `Types.list(Types.any)`.
 
@@ -331,7 +334,7 @@ You can also use the shortcut `myClass.list`.
 
 ### `ScopedMap`
 
-`ScopedMap` is a Map-like object that allows you to push and pop scopes.
+`ScopedMap` is an implementation of a scope chain.
 
 @todo: break this out into its own file and document it better
 

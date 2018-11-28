@@ -126,11 +126,14 @@ export class NodeClass {
   /**
    * Sets the nodeClass as a subtype of the given supertype.
    * Is "extends" a reserved word? Whoopsie
-   * @param {NodeClass} parent 
+   * @param {NodeClass} superclass
    * @returns {NodeClass} this (for risky chainability)
    */
-  extends(parent) {
-    this._ancestors.push(...parent._ancestors);
+  extends(superclass) {
+    if(this._ancestors.length > 1) {
+      throw new TypeError(`${this.className} may not extend multiple superclasses.`);
+    }
+    this._ancestors.push(...superclass._ancestors);
     return this._proxy; // for chainability
   }
   /**
