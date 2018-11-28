@@ -1,4 +1,5 @@
-import {NodeClass, PatternMatcher, ScopedMap, _} from '../pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, _} from '../pattern-matcher.mjs';
+import {ScopeChain} from './ScopeChain.mjs';
 import {LettuceStore} from './store.mjs'
 import * as err from './errors.mjs';
 import * as d from './definitions.mjs';
@@ -13,7 +14,7 @@ let MAX_TIME = 2000;
 
 export let evaluate = function(program, callback) {
    // an alternative to immutable maps for scoping: a stack-map
-  let env = new ScopedMap(undefined, false, true);
+  let env = new ScopeChain(undefined, false, true);
   let store = new LettuceStore();
   let [expr] = program;
   store[GLOBALS] = { // not what store is designed for but whatevs
@@ -27,7 +28,7 @@ export let evaluate = function(program, callback) {
 };
 
 export let stepThrough = function(program, callback) {
-  let env = new ScopedMap(undefined, false, true);
+  let env = new ScopeChain(undefined, false, true);
   let store = new LettuceStore();
   let [expr] = program;
   store[GLOBALS] = { // not what store is designed for but whatevs
@@ -61,7 +62,7 @@ let cps_map = (list, mapfunc, callback) => {
  * callback with the unwrapped values. It's like, Monads or something.
  * @param {NodeInstance|Expr[]} exprs Array of expressions to unwrap and pass to
  *  callback. Heck, just pass the whole NodeInstance, see if I care.
- * @param {ScopedMap} env 
+ * @param {ScopeChain} env 
  * @param {LettuceStore} store 
  * @param {Function} unwrapFunc 
  * @param {Function} callback

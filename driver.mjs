@@ -1,4 +1,4 @@
-import {NodeClass, PatternMatcher, Types, _, ScopedMap} from './pattern-matcher.mjs';
+import {NodeClass, PatternMatcher, Types, _} from './pattern-matcher.mjs';
 
 natural_numbers: { // break natural_numbers;
   let NatNum = new NodeClass('NatNum').setAbstract(); // #riskyChaining4Ever

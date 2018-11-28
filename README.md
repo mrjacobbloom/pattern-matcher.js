@@ -50,7 +50,6 @@ These API docs are written in a kind of pseudo-TypeScript that I hope y'all won'
   - [`Types.validate(termInstance): void`](#typesvalidateterminstance-void)
   - [`Types.any` (alias: `_`)](#typesany-alias-_)
   - [`Types.list(type: NodeClass|NodeInstance|Any , min=0, max=Infinity): Types.List` (alias: `myClass.list`)](#typeslisttype-nodeclassnodeinstanceany--min0-maxinfinity-typeslist-alias-myclasslist)
-- [`ScopedMap`](#scopedmap)
 
 
 
@@ -331,12 +330,6 @@ Put this in any list of argument types or in a pattern to match against, it
 means "expect an array of `type`s of size `min`-`max` (inclusive)".
 
 You can also use the shortcut `myClass.list`.
-
-### `ScopedMap`
-
-`ScopedMap` is an implementation of a scope chain.
-
-@todo: break this out into its own file and document it better
 
 ## Run it
 
