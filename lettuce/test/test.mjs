@@ -3,6 +3,7 @@ import grammar from '../grammar.mjs';
 import {evaluate} from '../evaluate.mjs';
 import {setErrSource} from '../errors.mjs';
 import * as d from '../definitions.mjs';
+import {Types} from '../../pattern-matcher.mjs';
 
 const grammar2 = nearley.Grammar.fromCompiled(grammar);
 
@@ -33,12 +34,10 @@ let test = (suite, name, code, callback) => {
   }
 };
 
-let astEq = (a, b) => a.toString() == b.toString(); // hacky but should work -- can swap it out later
-
 // PARSER TESTS
 test('parser', 'simple let binding program 1',
 `let x = 10 in x + 15`,
-(ast, result, err) => astEq(ast, d.TopLevel(d.Let(d.Ident("x"), d.ConstNum(10.0), d.Plus(d.Ident("x"), d.ConstNum(15.0)))))
+(ast, result, err) => Types.eq(ast, d.TopLevel(d.Let(d.Ident("x"), d.ConstNum(10.0), d.Plus(d.Ident("x"), d.ConstNum(15.0)))))
 );
 
 test('parser', 'let binding with more arithmetic',

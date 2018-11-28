@@ -46,8 +46,9 @@ These API docs are written in a kind of pseudo-TypeScript that I hope y'all won'
   - [`myNodeInstance.className: string`](#mynodeinstanceclassname-string)
 - [`PatternMatcher`](#patternmatcher)
 - [`Types`](#types)
-  - [`Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any) boolean`](#typesmatchespattern-nodeinstancenodeclassany-input-any-boolean)
+  - [`Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any): boolean`](#typesmatchespattern-nodeinstancenodeclassany-input-any-boolean)
   - [`Types.validate(termInstance): void`](#typesvalidateterminstance-void)
+  - [`Types.eq(left: NodeInstance|NodeClass|Any, right: NodeInstance|NodeClass|Any): boolean`](#typeseqleft-nodeinstancenodeclassany-right-nodeinstancenodeclassany-boolean)
   - [`Types.any` (alias: `_`)](#typesany-alias-_)
   - [`Types.list(type: NodeClass|NodeInstance|Any , min=0, max=Infinity): Types.List` (alias: `myClass.list`)](#typeslisttype-nodeclassnodeinstanceany--min0-maxinfinity-typeslist-alias-myclasslist)
 
@@ -306,7 +307,7 @@ insert(mytree, {n:5});
 
 `Types` is an object containing a few things that help with types.
 
-#### `Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any) boolean`
+#### `Types.matches(pattern: NodeInstance|NodeClass|Any, input: Any): boolean`
 
 Returns whether the two things match (in type, not necessarily in value). The
 left side is the pattern/expected value and the right term is the input/actual
@@ -317,6 +318,12 @@ value.
 Make sure all the arguments' types line up with the NodeClass's expected types. 
 Doesn't return anything, but throws if types ton't line up with what's expected.
 This is automatically called at the start of every `PatternMatcher` call.
+
+#### `Types.eq(left: NodeInstance|NodeClass|Any, right: NodeInstance|NodeClass|Any): boolean`
+
+Does a deep equality check on 2 NodeInstances (and does its best on anything
+else). Note that NodeClasses are only considered equal to NodeInstances if the
+instance has no arguments, and superclasses do not equal subclasses.
 
 #### `Types.any` (alias: `_`)
 
@@ -331,13 +338,30 @@ means "expect an array of `type`s of size `min`-`max` (inclusive)".
 
 You can also use the shortcut `myClass.list`.
 
-## Run it
+## Run/test it
 
 This uses ES module syntax, so it should work fine in browsers but you'll have
-to use a flag to get it to run under Node (version 10+):
+to use a flag to get it to run under Node (version 10+).
+
+### The test suite
+
+```bash
+npm test
+```
+
+### The driver
 
 ```bash
 node --experimental-modules driver.mjs
+```
+
+### Lettuce stuff
+
+To run the lettuce tests:
+
+```bash
+cd lettuce
+npm test
 ```
 
 To run the lettuce repl:

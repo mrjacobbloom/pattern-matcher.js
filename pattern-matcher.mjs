@@ -73,6 +73,14 @@ class NodeInstance extends Array {
   }
 }
 
+const isObjectOrFunction = (() => {
+  let t = ['object', 'function'];
+  return thing => {
+    if(!thing) return false;
+    return t.includes(typeof thing);
+  }
+})();
+
 /**
  * NodeClass here is our generic word for a terminal or nonterminal. They can
  * arbitrarily extend each-other using a.extends(b) and you can declare them
@@ -195,7 +203,7 @@ export class PatternMatcher {
       if(Types.matches(pattern, term)) {
         let retval;
         try {
-          if(ifGuard && ifGuard(term)) continue;
+          if(ifGuard && !ifGuard(term, ...passedArgs)) continue;
           retval = callback(term, ...passedArgs);
         } catch(err) {
           if(err.message.includes('undefined is not a function')) {
@@ -213,6 +221,9 @@ export class PatternMatcher {
   }
   getArgValue(n) {
     let stack = this.argValueStacks[n];
+    if(!stack.length) {
+      throw new Error('PatternMatcher proxied argument no longer exists. Consider using passed arguments instead.');
+    }
     let depth = stack.length - 1;
     return stack[depth];
   }
@@ -251,11 +262,17 @@ export class PatternMatcher {
   }
   pushArgValues(args) {
     if(!this.argValueStacks) return args;
+    if(args.length < this.argValueStacks.length) {
+      throw new TypeError('Proxied arguments to PatternMatcher are required');
+    }
     for(let i = 0; i < this.argValueStacks.length; i++) {
       let arg = args[i];
+      if(!isObjectOrFunction(arg)) {
+        throw new TypeError('Proxied arguments to PatternMatcher must not be primitives');
+      }
       this.argValueStacks[i].push(arg[unwrapped] || arg);
     }
-    return [args.slice(this.argValueStacks.length - 1)];
+    return args.slice(this.argValueStacks.length);
   }
   popArgValues() {
     if(!this.argValueStacks) return;
@@ -269,13 +286,13 @@ let argMatches = (arg, expectedType) => {
   let matches, actualType;
   if(expectedType == Types.any) {
     matches = true;
-  } else if(['object', 'function'].includes(typeof arg) && arg._ancestors && expectedType._ancestors) {
+  } else if(isObjectOrFunction(arg) && arg._ancestors && expectedType._ancestors) {
     matches = arg._ancestors.includes(expectedType._ancestors[0]);
     actualType = arg._ancestors[0];
   } else {
     let constr = Object(arg).constructor;
     matches = (constr == expectedType);
-    actualType = ['object', 'function'].includes(typeof arg) ? constr.name : typeof arg;
+    actualType = isObjectOrFunction(arg) ? constr.name : typeof arg;
   }
   return {matches, actualType}
 };
@@ -326,8 +343,9 @@ export let Types = {
   matches: (pattern, input) => {
     if(pattern == Types.any) return true;
     if(pattern && (pattern._isTerm || pattern instanceof NodeInstance)) {
+      if(!input) return false;
       if(!input._isTerm && !(input instanceof NodeInstance)) return false;
-      if (!input._ancestors.includes(pattern.nodeClass)) return false;
+      if(!input._ancestors.includes(pattern.nodeClass)) return false;
       if(pattern._isTerm) return true;
       if(input._isTerm) {
         return pattern.length === 0;
@@ -352,10 +370,12 @@ export let Types = {
         case "boolean": return pattern == Boolean;
         case "symbol": return pattern == Symbol;
         case "undefined": return pattern === undefined;
-        case "object":
         case "function":
-          if(input === null) return pattern === null;
-          return input instanceof pattern || input === pattern;
+        case "object":
+          if(input === null || pattern === null) return input === pattern;
+          if(!isObjectOrFunction(pattern)) return false;
+          if(!pattern.prototype) return input === pattern; // arrow functions break instanceof
+          return (input instanceof pattern) || input === pattern;
       }
     }
   },
@@ -402,6 +422,57 @@ export let Types = {
         }
         Types.validate(arg);
       }
+    }
+  },
+
+  /**
+   * Does a deep equality check on 2 NodeInstances (and does its best on
+   * anything else). Note that NodeClasses are only considered equal to
+   * NodeInstances if the instance has no arguments, and superclasses do not
+   * equal subclasses.
+   * @param {*} left First thing to compare
+   * @param {*} right Second thing to compare
+   * @returns {boolean}
+   */
+  eq: (left, right) => {
+    if(left === right) return true; // handle trivial case
+    if(isObjectOrFunction(left) && isObjectOrFunction(right)) {
+      if(left instanceof NodeInstance) {
+        if(!(right instanceof NodeInstance)) {
+          return right._isTerm && left.nodeClass === right.nodeClass && left.length === 0;
+        }
+        if(left.nodeClass !== right.nodeClass) return false;
+        if(left.length !== right.length) return false;
+        for(let i = 0; i < left.length; i++) {
+          if(!Types.eq(left[i], right[i])) return false;
+        }
+        return true;
+      } else if(left._isTerm) {
+        if(!right._isTerm) {
+          return (right instanceof NodeInstance) && left.nodeClass === right.nodeClass && right.length === 0;
+        }
+        return left.nodeClass === right.nodeClass;
+      } else { // it's some other kind of object
+        if(left[Symbol.iterator]) {
+          if(!right[Symbol.iterator]) return false;
+          let rightIterator = right[Symbol.iterator]();
+          let rightItem = rightIterator.next();
+          for(let leftItem of left) {
+            if(!Types.eq(leftItem, rightItem.value)) return false;
+            rightItem = rightIterator.next();
+          }
+          if(rightItem.done === false) return false; // they're different lengths I guess?
+          return true;
+        } else {
+          if(Object.keys(left).length !== Object.keys(right).length) return false;
+          for(let key of Object.keys(left)) {
+            if(!Types.eq(left[key], right[key])) return false;
+          }
+          return true;
+        }
+      }
+    } else {
+      return false;
     }
   }
 };

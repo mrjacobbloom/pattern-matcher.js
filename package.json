@@ -1,0 +1,22 @@
+{
+  "name": "pattern-matcher",
+  "version": "1.0.0",
+  "description": "JS Implementation of Pattern Matching and a bunch of interpreters that use it",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --experimental-modules test/test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrjacobbloom/pattern-matcher.js.git"
+  },
+  "author": "Jacob Bloom",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrjacobbloom/pattern-matcher.js/issues"
+  },
+  "homepage": "https://github.com/mrjacobbloom/pattern-matcher.js#readme"
+}
