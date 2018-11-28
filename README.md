@@ -10,7 +10,7 @@ could probably be removed if I wasn't so attached to the `new` keyword. But I
 think `new NodeClass(...)` is prettier than `genClass(...)` so that's what I went
 with.
 
-I gave a presentation on this repo in my class: [[link]](https://docs.google.com/presentation/d/1WILaZ4DszKBVeiOUsmyxBdaxqeTNQKpVTq4OHLoTbtQ)
+I gave a presentation on this project in my class: [[link]](https://docs.google.com/presentation/d/1WILaZ4DszKBVeiOUsmyxBdaxqeTNQKpVTq4OHLoTbtQ)
 
 ## Navigating this repo
 
