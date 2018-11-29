@@ -23,7 +23,7 @@ class NodeInstance extends Array {
           return arg.toString();
         } else {
           if(typeof cls == 'function') {
-            return cls.name;
+            return cls.name || '<anonymous function>';
           } else if(Array.isArray(arg)) {
             return '[' + arg.join(', ') + ']';
           } else {
@@ -206,7 +206,7 @@ export class PatternMatcher {
           if(ifGuard && !ifGuard(term, ...passedArgs)) continue;
           retval = callback(term, ...passedArgs);
         } catch(err) {
-          if(err.message.includes('undefined is not a function')) {
+          if(err.message.includes('undefined is not a function') || err.message.includes('Cannot read property \'Symbol(Symbol.iterator)\' of undefined')) {
             err.message = 'Destructuring failed (try adding or removing brackets)';
           }
           throw err;
@@ -243,7 +243,7 @@ export class PatternMatcher {
           }
         }).bind(this),
         set: (function(obj, prop, value) {
-          this.getArgValue(i)[prop] = value;
+          return this.getArgValue(i)[prop] = value;
         }).bind(this),
         apply: (function(target, thisArg, args) {
           try {
@@ -447,11 +447,8 @@ export let Types = {
           if(!Types.eq(left[i], right[i])) return false;
         }
         return true;
-      } else if(left._isTerm) {
-        if(!right._isTerm) {
-          return (right instanceof NodeInstance) && left.nodeClass === right.nodeClass && right.length === 0;
-        }
-        return left.nodeClass === right.nodeClass;
+      } else if(left._isTerm) { // if they're both terms it's a trivial case
+        return (right instanceof NodeInstance) && left.nodeClass === right.nodeClass && right.length === 0;
       } else { // it's some other kind of object
         if(left[Symbol.iterator]) {
           if(!right[Symbol.iterator]) return false;

@@ -65,6 +65,10 @@ import assert from 'assert';
   assert.strictEqual(node.nodeClass, class1.nodeClass, 'NodeInstance.nodeClass copied incorrectly');
   assert.strictEqual(node.length, 1, 'NodeInstance args set incorrectly');
   assert.strictEqual(node[0], 3, 'NodeInstance args set incorrectly');
+  assert.strictEqual(class1().toString(), 'class1', 'NodeInstance.toString failed');
+  assert.strictEqual(class1([1,2,3]).toString(), 'class1([1, 2, 3])', 'NodeInstance.toString failed');
+  assert.strictEqual(class1(RegExp).toString(), 'class1(RegExp)', 'NodeInstance.toString failed');
+  assert.strictEqual(class1(() => {}).toString(), 'class1(<anonymous function>)', 'NodeInstance.toString failed');
   assert.strictEqual(node.toString(), 'class1(3)', 'NodeInstance.toString failed');
 
   /** NodeInstance.prototype.list **/
@@ -154,6 +158,11 @@ import assert from 'assert';
   assert.doesNotThrow(() => Types.validate(Nil), null, 'Types.validate threw on NodeClass when 0 args expected');
   assert.doesNotThrow(() => Types.validate(1), null, 'Types.validate threw for primitive value');
   assert.doesNotThrow(() => Types.validate(() => {}), null, 'Types.validate threw for non-NodeClass/Instance function');
+  let NumListList = new NodeClass('NumListList', [Types.list(NumList, 2, 2)]).extends(NumList);
+  assert.throws(() => Types.validate(NumListList([1, 2])), null, 'Types.validate didn\'t throw on NodeClass with list of unexpected types');
+  assert.throws(() => Types.validate(NumListList([Nil])), null, 'Types.validate didn\'t throw on NodeClass with list length < min');
+  assert.throws(() => Types.validate(NumListList([Nil, Nil, Nil])), null, 'Types.validate didn\'t throw on NodeClass with list length > max');
+  assert.doesNotThrow(() => Types.validate(NumListList([Nil, Nil])), null, 'Types.validate threw on NodeClass list argument');
 
   /** Types.eq() **/
   assert(Types.eq(Cons(1, Cons(2, Nil)), Cons(1, Cons(2, Nil))), 'Types.eq failed');
@@ -205,7 +214,25 @@ import assert from 'assert';
     [_, term => false]
   ]);
   assert(matcher4(1, true), 'if-guard did not recieve passed arg');
-
+  let matcher5 = new PatternMatcher([
+    [_, ([w, [[x, y], z]]) => x],
+  ]);
+  assert.throws(() => matcher5([1]), /Destructuring failed/, 'Destructoring error wasn\'t renamed (or Chrome reworded it to be better)');
+  let matcher6 = new PatternMatcher(proxied => [
+    [_, term => term == 'get', term => proxied.x],
+    [_, term => term == 'getfunc', term => proxied.y()],
+    [_, term => term == 'set', term => {proxied.x = 4}],
+    [_, term => term == 'apply', term => proxied(2)],
+    [_, term => term == 'construct', term => new proxied()],
+  ]);
+  let p1 = {x: 3, y: function() {return this.x}};
+  assert.strictEqual(matcher6('get', p1), 3, 'PatternMatcher: proxiedArg.get failed');
+  assert.strictEqual(matcher6('getfunc', p1), 3, 'PatternMatcher: proxiedArg.get failed with function');
+  matcher6('set', p1);
+  assert.strictEqual(p1.x, 4, 'PatternMatcher: proxiedArg.set failed');
+  let p2 = x => x;
+  assert.strictEqual(matcher6('apply', p2), 2, 'PatternMatcher: proxiedArg.apply failed');
+  assert(Array.isArray(matcher6('construct', Array)), 'PatternMatcher: proxiedArg.construct failed');
 }
 
 /**********************************
@@ -243,13 +270,6 @@ import assert from 'assert';
     let NumTree = new NodeClass('NumTree').setAbstract();
     let Leaf = new NodeClass('Leaf').extends(NumTree);
     let Node = new NodeClass('Node', [Number, NumTree, NumTree]).extends(NumTree);
-  
-    let depth = new PatternMatcher([
-      [Leaf, () => 0],
-      [Node(Number, NumTree, NumTree), ([_, left, right]) => {
-        return 1 + Math.max(depth(left), depth(right));
-      }]
-    ]);
   
     let treeMatches = new PatternMatcher(pred => [
         [Leaf, () => true],
@@ -297,5 +317,7 @@ import assert from 'assert';
     assert(Types.eq(insertBSTPassed(tree, 5), expected), 'insertBSTPassed failed');
   }
 }
+
+debugger;
 
 console.log('All tests passed');
