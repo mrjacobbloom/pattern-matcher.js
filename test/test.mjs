@@ -318,6 +318,4 @@ import assert from 'assert';
   }
 }
 
-debugger;
-
 console.log('All tests passed');
