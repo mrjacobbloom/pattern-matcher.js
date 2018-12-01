@@ -15,9 +15,8 @@ I gave a presentation on this project in my class: [[link]](https://docs.google.
 ## Navigating this repo
 
 - `pattern-matcher.mjs` is the library or whatever.
-- `driver.mjs` is a set of inductive implementations of various structures that
+- `examples/` is a set of inductive implementations of various structures that
   mirror Scala code from my class
-- `mython.mjs` is an implementation of a language we're doing in my class.
 - [`lettuce/`](https://github.com/mrjacobbloom/pattern-matcher.js/tree/master/lettuce)
   is an entire implementation of another language we're doing in my class,
   including a Nearley parser. It has its own readme because it's a whole other
@@ -343,16 +342,24 @@ You can also use the shortcut `myClass.list`.
 This uses ES module syntax, so it should work fine in browsers but you'll have
 to use a flag to get it to run under Node (version 10+).
 
-### The test suite
+### Run the test suite
 
 ```bash
 npm test
 ```
 
-### The driver
+### Run the examples
+
+To run all the examples:
 
 ```bash
-node --experimental-modules driver.mjs
+npm run-script examples
+```
+
+To only run one of the examples:
+
+```bash
+node --experimental-modules examples/natural-numbers.mjs
 ```
 
 ### Lettuce stuff

@@ -268,7 +268,7 @@ export class PatternMatcher {
     for(let i = 0; i < this.argValueStacks.length; i++) {
       let arg = args[i];
       if(!isObjectOrFunction(arg)) {
-        throw new TypeError('Proxied arguments to PatternMatcher must not be primitives');
+        throw new TypeError(`Proxied arguments to PatternMatcher must not be primitives (found "${String(arg)}")`);
       }
       this.argValueStacks[i].push(arg[unwrapped] || arg);
     }
